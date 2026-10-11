@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useEffect, useReducer, useRef, useState, type ChangeEvent } from 'react'
 import { Frame, Lock, MoveHorizontal, PersonStanding, Repeat, ScanFace, Smartphone, Timer, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { createBeeper, type Beeper } from '../capture/beep'
@@ -7,7 +7,10 @@ import { openCamera, stopCamera } from '../capture/camera'
 import { startCountdown } from '../capture/countdown'
 import { cameraOn, COUNTDOWN_SECONDS, initialPhase, next, PROBLEM_MESSAGE, type CaptureProblem } from '../capture/flow'
 import { fileToCanvas, frameToCanvas } from '../capture/photo'
+import { FULL_HEIGHT, Overlay, PhotoView, Stage } from '../capture/Stage'
+import { preloadModels } from '../measure/models'
 import { Button, Notice, Viewfinder } from '../ui/kit'
+import { MeasureStep } from './MeasureStep'
 
 // The setup tips. The first is the only guard against a tilted phone, so keep it.
 const TIPS: { icon: LucideIcon; text: string }[] = [
@@ -16,10 +19,6 @@ const TIPS: { icon: LucideIcon; text: string }[] = [
   { icon: PersonStanding, text: 'Face the camera, arms slightly out' },
   { icon: Repeat, text: 'Same clothes, light and spot each time' },
 ]
-
-// Camera and review pictures: nearly full height, leaving room for the header,
-// one line of text or chips, and the buttons.
-const FULL_HEIGHT = 'calc(100dvh - 12rem)'
 
 // What to look for on the review screen. Prompts for the person, not results:
 // nothing has been checked yet, so no ticks.
@@ -50,6 +49,9 @@ export function CheckIn() {
 
   useEffect(() => {
     mountedRef.current = true
+    // Start downloading the measuring models now, so they're usually ready by
+    // the time the photo is taken. Failures surface later, on the measuring step.
+    preloadModels().catch(() => {})
     return () => {
       mountedRef.current = false
       cancelCountdownRef.current?.()
@@ -244,56 +246,6 @@ export function CheckIn() {
     )
   }
 
-  // ready: measuring arrives in M3 step 3.
-  return (
-    <main className="space-y-4">
-      <Stage aspect={phase.photo.width / phase.photo.height}>
-        <PhotoView photo={phase.photo} />
-      </Stage>
-      <Viewfinder className="bg-graphite-900">
-        <p className="font-mono text-xs uppercase tracking-wider text-signal">Ready for measuring</p>
-        <p className="mt-2 text-sm text-graphite-300">Measuring this photo arrives in the next step.</p>
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <Button type="button" variant="ghost" onClick={() => dispatch({ type: 'restart' })}>
-            Start over
-          </Button>
-          <Link to="/history">
-            <Button type="button" tabIndex={-1}>
-              Back to history
-            </Button>
-          </Link>
-        </div>
-      </Viewfinder>
-    </main>
-  )
-}
-
-/**
- * Frame shaped exactly like the picture (width / height), so the outline drawn
- * over it lines up with the photo. No taller than maxHeight (default 70% of the screen).
- */
-function Stage({ aspect, maxHeight = '70dvh', children }: { aspect: number; maxHeight?: string; children: ReactNode }) {
-  return (
-    <div
-      className="relative mx-auto overflow-hidden rounded-md bg-black"
-      style={{ aspectRatio: aspect, width: `min(100%, calc(${maxHeight} * ${aspect}))` }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function Overlay({ children }: { children: ReactNode }) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-sm text-graphite-100">{children}</div>
-  )
-}
-
-/** Shows the in-memory photo canvas without copying it anywhere. */
-function PhotoView({ photo }: { photo: HTMLCanvasElement }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    ref.current?.replaceChildren(photo)
-  }, [photo])
-  return <div ref={ref} className="h-full w-full [&>canvas]:h-full [&>canvas]:w-full [&>canvas]:object-cover" />
+  // ready: measure the photo on this device, then save or retake.
+  return <MeasureStep photo={phase.photo} onRetake={() => dispatch({ type: 'restart' })} />
 }

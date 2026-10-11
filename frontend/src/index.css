@@ -22,6 +22,18 @@
   --color-signal-dim: #8fb33f;
   --color-warn: #f5b560;
   --color-error: #f57a6a;
+
+  /* The measuring step's scan line sweeping down the photo. */
+  --animate-scan: scan 1.8s ease-in-out infinite alternate;
+
+  @keyframes scan {
+    from {
+      top: 4%;
+    }
+    to {
+      top: 96%;
+    }
+  }
 }
 
 @layer base {
