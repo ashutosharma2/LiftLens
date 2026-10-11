@@ -1,8 +1,11 @@
 /**
  * Front-facing body guide, head to mid-thigh, arms slightly away from the body.
  * Drawn in a 100 x 160 box and centred over the camera picture or photo.
+ * `lineWidth` is in box units, so it scales with the picture (0.8 is about
+ * 2.7 px on a phone). The live camera uses a thicker line so it can be seen
+ * from about 2 m away.
  */
-export function BodyOutline({ className = '' }: { className?: string }) {
+export function BodyOutline({ className = '', lineWidth = 0.8 }: { className?: string; lineWidth?: number }) {
   return (
     <svg
       aria-hidden
@@ -10,7 +13,7 @@ export function BodyOutline({ className = '' }: { className?: string }) {
       preserveAspectRatio="xMidYMid meet"
       className={`pointer-events-none absolute inset-0 h-full w-full ${className}`}
     >
-      <g fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2.5 1.5" vectorEffect="non-scaling-stroke">
+      <g fill="none" stroke="currentColor" strokeWidth={lineWidth} strokeDasharray="2.5 1.5">
         <ellipse cx="50" cy="22" rx="9" ry="11" />
         {/* Left side: neck, shoulder, outer arm, hand, inner arm, torso, hip, thigh */}
         <path d="M46 32 L46 36 Q44 41 32 43 Q26 45 25 55 L21 84 L17 114 L21 118 L25 114 L29 86 L33 60 L36 88 Q35 100 32 114 L34 154" />

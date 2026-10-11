@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { Frame, Lock, MoveHorizontal, PersonStanding, Repeat, ScanFace, Smartphone, type LucideIcon } from 'lucide-react'
+import { Frame, Lock, MoveHorizontal, PersonStanding, Repeat, ScanFace, Smartphone, Timer, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router'
 import { createBeeper, type Beeper } from '../capture/beep'
 import { BodyOutline } from '../capture/BodyOutline'
@@ -16,6 +16,10 @@ const TIPS: { icon: LucideIcon; text: string }[] = [
   { icon: PersonStanding, text: 'Face the camera, arms slightly out' },
   { icon: Repeat, text: 'Same clothes, light and spot each time' },
 ]
+
+// Camera and review pictures: nearly full height, leaving room for the header,
+// one line of text or chips, and the buttons.
+const FULL_HEIGHT = 'calc(100dvh - 12rem)'
 
 // What to look for on the review screen. Prompts for the person, not results:
 // nothing has been checked yet, so no ticks.
@@ -161,7 +165,7 @@ export function CheckIn() {
     const counting = phase.kind === 'countdown'
     return (
       <main className="space-y-4">
-        <Stage aspect={videoAspect}>
+        <Stage aspect={videoAspect} maxHeight={FULL_HEIGHT}>
           {/* Mirrored like a mirror; the captured photo isn't. */}
           <video
             ref={videoRef}
@@ -171,19 +175,27 @@ export function CheckIn() {
             onLoadedMetadata={(e) => setVideoAspect(e.currentTarget.videoWidth / e.currentTarget.videoHeight)}
             className="h-full w-full -scale-x-100 object-cover"
           />
-          <BodyOutline className={counting ? 'text-signal' : 'text-graphite-100/70'} />
+          {/* Thick, shadowed outline and a big corner number: readable from about 2 m away. */}
+          <BodyOutline
+            lineWidth={counting ? 1.6 : 1.2}
+            className={`drop-shadow-[0_0_3px_rgb(0_0_0_/_0.8)] ${counting ? 'text-signal' : 'text-graphite-100'}`}
+          />
           {phase.kind === 'opening' && <Overlay>Starting camera…</Overlay>}
           {counting && (
-            <Overlay>
-              <span aria-live="assertive" className="font-mono text-8xl font-medium text-signal drop-shadow-lg">
-                {phase.secondsLeft}
-              </span>
-            </Overlay>
+            <span
+              aria-live="assertive"
+              className="absolute right-4 top-2 font-mono text-[20dvh] font-medium leading-none text-signal drop-shadow-[0_2px_6px_rgb(0_0_0_/_0.8)]"
+            >
+              {phase.secondsLeft}
+            </span>
           )}
         </Stage>
-        <p className="text-center text-sm text-graphite-300">
-          {counting ? 'Get into the outline and hold still.' : 'Tap Start, then step back into the outline. You have 10 seconds.'}
-        </p>
+        {!counting && (
+          <p className="flex items-center justify-center gap-1.5 text-sm text-graphite-300">
+            <Timer aria-hidden className="size-4 text-signal" strokeWidth={1.75} />
+            Tap Start, then step back · 10 s
+          </p>
+        )}
         {counting ? (
           <Button type="button" variant="ghost" onClick={onCancel}>
             Cancel
@@ -205,8 +217,7 @@ export function CheckIn() {
   if (phase.kind === 'review') {
     return (
       <main className="space-y-4">
-        {/* Nearly full height: the screen minus the header, check chips and buttons. */}
-        <Stage aspect={phase.photo.width / phase.photo.height} maxHeight="calc(100dvh - 12rem)">
+        <Stage aspect={phase.photo.width / phase.photo.height} maxHeight={FULL_HEIGHT}>
           <PhotoView photo={phase.photo} />
           <BodyOutline className="text-signal/80" />
         </Stage>
