@@ -21,3 +21,7 @@ crash.log
 
 # Build output (Lambda packages)
 backend/*/build/
+
+# MediaPipe runtime and models copied in by frontend/scripts/copy-models.sh (never committed)
+frontend/public/mediapipe/
+frontend/public/models/

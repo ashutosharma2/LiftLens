@@ -52,13 +52,34 @@ export async function loadModels(paths: ModelPaths): Promise<Models> {
 
 type ImageInput = HTMLImageElement | HTMLCanvasElement | ImageBitmap;
 
-export function detect(models: Models, image: ImageInput): Detection {
-  const width = image.width;
-  const height = image.height;
+/** Model files served by the app itself (ADR-002); copied into public/ by scripts/copy-models.sh. */
+export const DEFAULT_MODEL_PATHS: ModelPaths = {
+  wasmBase: "/mediapipe/wasm",
+  poseModel: "/models/pose_landmarker_lite.task",
+  segmenterModel: "/models/selfie_segmenter.tflite",
+};
 
-  const poseResult = models.pose.detect(image);
-  const landmarks = poseResult.landmarks[0] ?? null;
+let shared: Promise<Models> | null = null;
 
+/**
+ * Starts loading the models once and shares the result, so the check-in screen
+ * can begin downloading as soon as it opens. A failed load can be retried.
+ */
+export function preloadModels(paths: ModelPaths = DEFAULT_MODEL_PATHS): Promise<Models> {
+  shared ??= loadModels(paths).catch((err) => {
+    shared = null;
+    throw err;
+  });
+  return shared;
+}
+
+/** Landmarks of the first person found, or null if nobody was detected. */
+export function detectPose(models: Models, image: ImageInput): Landmark[] | null {
+  return models.pose.detect(image).landmarks[0] ?? null;
+}
+
+/** The person/background mask, copied out of MediaPipe's memory, with a row reader. */
+export function segmentMask(models: Models, image: ImageInput): (y: number) => Uint8Array {
   const segResult = models.segmenter.segment(image);
   const mask = segResult.categoryMask;
   if (!mask) throw new Error("Segmenter returned no category mask");
@@ -66,11 +87,14 @@ export function detect(models: Models, image: ImageInput): Detection {
   const maskData = mask.getAsUint8Array().slice();
   const maskWidth = mask.width;
   segResult.close();
+  return (y) => maskData.subarray(y * maskWidth, (y + 1) * maskWidth);
+}
 
+export function detect(models: Models, image: ImageInput): Detection {
   return {
-    width,
-    height,
-    landmarks,
-    maskRowAt: (y) => maskData.subarray(y * maskWidth, (y + 1) * maskWidth),
+    width: image.width,
+    height: image.height,
+    landmarks: detectPose(models, image),
+    maskRowAt: segmentMask(models, image),
   };
 }
