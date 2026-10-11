@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { authErrorMessage } from '../auth/errors'
 import { AuthPage, Button, Field, Notice } from '../ui/kit'
+import { AuthIntro } from './AuthIntro'
 
 export function SignIn() {
   const navigate = useNavigate()
@@ -38,7 +39,7 @@ export function SignIn() {
   }
 
   return (
-    <AuthPage title="Sign in" subtitle="Track your shape, not just your weight.">
+    <AuthPage title="Sign in" subtitle="Welcome back." intro={<AuthIntro />}>
       <form onSubmit={onSubmit} className="space-y-4">
         {params.get('verified') && <Notice tone="info">Email confirmed. Sign in to continue.</Notice>}
         {params.get('reset') && <Notice tone="info">Password changed. Sign in with your new password.</Notice>}

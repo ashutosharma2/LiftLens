@@ -23,18 +23,49 @@ export function Wordmark() {
   )
 }
 
-/** Centered single-column page used by the sign-in screens. */
-export function AuthPage({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+/**
+ * Page used by the sign-in screens: the form card, centred. With `intro`, the
+ * intro sits beside the card on wide screens and below it on phones.
+ */
+export function AuthPage({
+  title,
+  subtitle,
+  intro,
+  children,
+}: {
+  title: string
+  subtitle?: string
+  intro?: ReactNode
+  children: ReactNode
+}) {
+  const card = (
+    <Viewfinder className="bg-graphite-900">
+      <h1 className="text-2xl font-semibold">{title}</h1>
+      {subtitle && <p className="mt-2 text-sm text-graphite-300">{subtitle}</p>}
+      <div className="mt-6">{children}</div>
+    </Viewfinder>
+  )
+
+  if (!intro) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
+        <div className="mb-8">
+          <Wordmark />
+        </div>
+        {card}
+      </main>
+    )
+  }
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
-      <div className="mb-8">
-        <Wordmark />
+    <main className="mx-auto grid min-h-dvh w-full max-w-md content-center gap-10 px-4 py-10 lg:max-w-5xl lg:grid-cols-2 lg:items-center lg:gap-16">
+      <div className="lg:order-2">
+        <div className="mb-8 lg:hidden">
+          <Wordmark />
+        </div>
+        {card}
       </div>
-      <Viewfinder className="bg-graphite-900">
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {subtitle && <p className="mt-2 text-sm text-graphite-300">{subtitle}</p>}
-        <div className="mt-6">{children}</div>
-      </Viewfinder>
+      <div className="lg:order-1">{intro}</div>
     </main>
   )
 }

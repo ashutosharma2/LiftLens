@@ -103,31 +103,44 @@ const BACK_ORDER: BackRegionId[] = ['calves', 'hamstrings', 'glutes', 'backArms'
 
 interface FigureProps<Id extends RegionId> {
   label: string
-  caption: string
+  caption?: string
   /** Small line under the caption, e.g. why the figure is all grey. */
   note?: string
   shapes: Record<Id, Shapes>
   order: Id[]
-  selected: RegionId | null
-  onSelect: (id: RegionId) => void
+  selected?: RegionId | null
+  /** Makes each part a button. Without it the figure is a plain picture. */
+  onSelect?: (id: RegionId) => void
   /** Back of the head as plain outline, since the back figure has no head part. */
   plainHead?: boolean
   /** Dashed lines where the two widths are taken (front only). */
   widthLines?: boolean
+  svgClassName?: string
 }
 
-/** One body figure: dark outline with tappable muscle groups on top. */
-function Figure<Id extends RegionId>({ label, caption, note, shapes, order, selected, onSelect, plainHead, widthLines }: FigureProps<Id>) {
+/** One body figure: dark outline with muscle groups on top, tappable when onSelect is given. */
+function Figure<Id extends RegionId>({
+  label,
+  caption,
+  note,
+  shapes,
+  order,
+  selected = null,
+  onSelect,
+  plainHead,
+  widthLines,
+  svgClassName = 'h-72 w-auto sm:h-80',
+}: FigureProps<Id>) {
   function onKey(id: RegionId, event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      onSelect(id)
+      onSelect?.(id)
     }
   }
 
   return (
     <figure className="flex flex-col items-center">
-      <svg viewBox="0 0 200 400" className="h-72 w-auto sm:h-80" role="group" aria-label={label}>
+      <svg viewBox="0 0 200 400" className={svgClassName} role={onSelect ? 'group' : 'img'} aria-label={label}>
         <g aria-hidden className="pointer-events-none fill-graphite-950">
           <Pair d={SILHOUETTE} />
           {plainHead && <path d={HEAD} className="fill-graphite-800" />}
@@ -135,6 +148,19 @@ function Figure<Id extends RegionId>({ label, caption, note, shapes, order, sele
         {order.map((id) => {
           const r = region(id)
           const isSelected = selected === id
+          const paths = (
+            <>
+              {shapes[id].centre?.map((d) => <path key={d} d={d} />)}
+              {shapes[id].side?.map((d) => <Pair key={d} d={d} />)}
+            </>
+          )
+          if (!onSelect) {
+            return (
+              <g key={id} strokeWidth="1.5" strokeLinejoin="round" className={`stroke-graphite-950 ${r.measured ? 'fill-signal/85' : 'fill-graphite-700'}`}>
+                {paths}
+              </g>
+            )
+          }
           const fill = r.measured
             ? isSelected ? 'fill-signal' : 'fill-signal/85 hover:fill-signal'
             : isSelected ? 'fill-graphite-500' : 'fill-graphite-700 hover:fill-graphite-500'
@@ -151,8 +177,7 @@ function Figure<Id extends RegionId>({ label, caption, note, shapes, order, sele
               strokeLinejoin="round"
               className={`cursor-pointer stroke-graphite-950 outline-none transition-colors ${fill} [&:focus-visible>path]:stroke-graphite-100`}
             >
-              {shapes[id].centre?.map((d) => <path key={d} d={d} />)}
-              {shapes[id].side?.map((d) => <Pair key={d} d={d} />)}
+              {paths}
             </g>
           )
         })}
@@ -163,11 +188,26 @@ function Figure<Id extends RegionId>({ label, caption, note, shapes, order, sele
           </g>
         )}
       </svg>
-      <figcaption aria-hidden className="mt-2 text-center">
-        <span className="block font-mono text-[11px] uppercase tracking-wider text-graphite-300">{caption}</span>
-        {note && <span className="block text-[11px] text-graphite-500">{note}</span>}
-      </figcaption>
+      {caption && (
+        <figcaption aria-hidden className="mt-2 text-center">
+          <span className="block font-mono text-[11px] uppercase tracking-wider text-graphite-300">{caption}</span>
+          {note && <span className="block text-[11px] text-graphite-500">{note}</span>}
+        </figcaption>
+      )}
     </figure>
+  )
+}
+
+/** The front figure as a plain picture (not tappable), e.g. to show what LiftLens measures before sign-in. */
+export function FrontFigure({ className }: { className?: string }) {
+  return (
+    <Figure
+      label="Body outline with the shoulders and waist highlighted: the two widths LiftLens measures"
+      shapes={FRONT}
+      order={FRONT_ORDER}
+      widthLines
+      svgClassName={className}
+    />
   )
 }
 

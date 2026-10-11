@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { PASSWORD_RULES } from '../auth/amplify'
 import { authErrorMessage } from '../auth/errors'
 import { AuthPage, Button, Field, Notice } from '../ui/kit'
+import { AuthIntro } from './AuthIntro'
 
 export function SignUp() {
   const navigate = useNavigate()
@@ -28,7 +29,7 @@ export function SignUp() {
   }
 
   return (
-    <AuthPage title="Create your account" subtitle="We’ll email you a code to confirm the address is yours.">
+    <AuthPage title="Create your account" subtitle="We’ll email you a code to confirm the address is yours." intro={<AuthIntro />}>
       <form onSubmit={onSubmit} className="space-y-4">
         {error && <Notice tone="error">{error}</Notice>}
         <Field label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
