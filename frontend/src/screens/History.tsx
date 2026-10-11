@@ -1,10 +1,12 @@
 import { signOut } from 'aws-amplify/auth'
+import { ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { getHistory, SignedOutError, type History as HistoryData, type HistoryItem } from '../api/client'
 import { apiDeps } from '../auth/session'
 import { BodyMap } from '../history/BodyMap'
 import { changeHeadline, latestSinceLast, scoredItems } from '../history/trend'
+import { Sparkline } from '../history/Sparkline'
 import { TrendChart } from '../history/TrendChart'
 import { Button, Notice, Viewfinder } from '../ui/kit'
 
@@ -70,12 +72,24 @@ export function History() {
   const previous = since ? scored[scored.indexOf(since.item) - 1] : undefined
   const noiseLabel = data ? `±${+(data.noiseThreshold * 100).toFixed(1)}%` : ''
   const baseline = data?.measurements.find((m) => m.isBaseline)?.shoulderToWaist ?? scored[0]?.shoulderToWaist
+  const count = data?.measurements.length ?? 0
+  // Facts straight from the stored data: when the baseline was set, how many check-ins, and the latest one.
+  const facts = [
+    data?.baselineTimestamp && `Baseline ${shortDate(data.baselineTimestamp)}`,
+    count > 0 && `${count} check-in${count === 1 ? '' : 's'}`,
+    count > 1 && latest && `last ${shortDate(latest.timestamp)}`,
+  ].filter(Boolean)
 
   return (
     <main className="space-y-8">
       <Viewfinder className="bg-graphite-900">
-        <p className="font-mono text-xs uppercase tracking-wider text-graphite-300">Shoulder-to-waist</p>
-        <p className="mt-2 font-mono text-5xl font-medium text-signal">{latest ? latest.shoulderToWaist.toFixed(2) : '—'}</p>
+        <div className="flex items-end justify-between gap-6">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-wider text-graphite-300">Shoulder-to-waist</p>
+            <p className="mt-2 font-mono text-5xl font-medium text-signal">{latest ? latest.shoulderToWaist.toFixed(2) : '—'}</p>
+          </div>
+          {scored.length >= 2 && <Sparkline items={scored} className="mb-2 h-12 w-28 sm:w-40" />}
+        </div>
         {since && (
           <p className="mt-3">
             <span className="block font-mono text-base text-graphite-100">{changeHeadline(since.since)}</span>
@@ -98,16 +112,35 @@ export function History() {
         {latest && !since && (
           <p className="mt-2 text-sm text-graphite-500">Your trend appears after your next check-in.</p>
         )}
+        {facts.length > 0 && (
+          <p className="mt-4 flex flex-wrap gap-x-2 border-t border-graphite-800 pt-3 font-mono text-[11px] uppercase tracking-wider text-graphite-500">
+            {facts.map((fact, i) => (
+              <span key={i} className="whitespace-nowrap">
+                {fact}
+                {i < facts.length - 1 && <span aria-hidden className="ml-2">·</span>}
+              </span>
+            ))}
+          </p>
+        )}
         <Link to="/check-in" className="mt-6 block">
           <Button tabIndex={-1}>New check-in</Button>
         </Link>
       </Viewfinder>
 
       {data && (
-        <section className="rounded-md border border-graphite-800 bg-graphite-900 p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold">Body map</h2>
-          <BodyMap ratio={scored.at(-1)?.shoulderToWaist ?? null} />
-        </section>
+        // Closed by default: the map doesn't change between check-ins, so it shouldn't make the page long.
+        <details className="group rounded-md border border-graphite-800 bg-graphite-900">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md p-4 sm:p-6 [&::-webkit-details-marker]:hidden">
+            <span>
+              <h2 className="inline text-lg font-semibold">Body map</h2>
+              <span className="ml-2 text-sm text-graphite-500">what LiftLens measures</span>
+            </span>
+            <ChevronDown aria-hidden className="size-5 shrink-0 text-graphite-300 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+            <BodyMap ratio={scored.at(-1)?.shoulderToWaist ?? null} />
+          </div>
+        </details>
       )}
 
       {scored.length >= 2 && baseline !== undefined && (
