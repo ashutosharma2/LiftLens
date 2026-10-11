@@ -61,6 +61,7 @@ def export(image_path, landmarker, segmenter):
     rh = to_px(landmarks[RIGHT_HIP], w, h)
     shoulder_joint_width = distance(ls, rs)
     hip_width = distance(lh, rh)
+    torso_length = distance(((ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2), ((lh[0] + rh[0]) / 2, (lh[1] + rh[1]) / 2))
 
     # The mask may come back as (h, w, 1); drop the channel axis.
     mask = segmenter.segment(image).category_mask.numpy_view().squeeze()
@@ -101,6 +102,7 @@ def export(image_path, landmarker, segmenter):
             "shoulder_to_waist": shoulder_width / waist_width,
             "shoulder_index": shoulder_width / hip_width,
             "waist_index": waist_width / hip_width,
+            "torso_length_px": torso_length,
         },
     }
     out_path = FIXTURES / f"{image_path.stem}.parity.json"

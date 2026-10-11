@@ -35,6 +35,26 @@ export const SHOULDER_EDGE_TO_JOINT_MAX = 1.8;
 
 export type ShoulderCheck = "ok" | "too_wide" | "too_narrow";
 
+/**
+ * Version of this measurement maths, stored with every saved measurement so
+ * results from different versions can be told apart (ADR-005). Must be one the
+ * API accepts (KNOWN_METHOD_VERSIONS in backend/api/validation.py).
+ */
+export const METHOD_VERSION = "2026-10-edge-v1";
+
+/** A joint counts as seen when MediaPipe's visibility score is at least this. */
+export const MIN_VISIBILITY = 0.5;
+
+/** Joints a front measurement can't do without. */
+export const REQUIRED_JOINTS = [
+  { index: 11, part: "shoulders" },
+  { index: 12, part: "shoulders" },
+  { index: 23, part: "hips" },
+  { index: 24, part: "hips" },
+] as const;
+
+export type BodyPart = (typeof REQUIRED_JOINTS)[number]["part"];
+
 export interface TorsoPoints {
   leftShoulder: Point;
   rightShoulder: Point;
@@ -72,10 +92,31 @@ export interface FrontMeasurements {
    */
   shoulderIndex: number;
   waistIndex: number;
+  /** Shoulder midpoint to hip midpoint: a bone length, stored for future rulers. */
+  torsoLengthPx: number;
 }
 
 export function toPx(landmark: Landmark, width: number, height: number): Point {
   return { x: landmark.x * width, y: landmark.y * height };
+}
+
+export function midpoint(a: Point, b: Point): Point {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/**
+ * Body parts whose joints are cut off by the frame edge or not clearly seen.
+ * A measurement needs all of them: an edge that isn't in the photo can't be measured.
+ */
+export function missingParts(landmarks: Landmark[]): BodyPart[] {
+  const missing = new Set<BodyPart>();
+  for (const { index, part } of REQUIRED_JOINTS) {
+    const joint = landmarks[index];
+    const inFrame = joint && joint.x >= 0 && joint.x <= 1 && joint.y >= 0 && joint.y <= 1;
+    const seen = joint && (joint.visibility ?? 1) >= MIN_VISIBILITY;
+    if (!inFrame || !seen) missing.add(part);
+  }
+  return [...missing];
 }
 
 export function distance(a: Point, b: Point): number {
@@ -135,6 +176,19 @@ export function findBodyEdges(
   return { left, right };
 }
 
+export type EdgeRow = "shoulders" | "waist";
+
+/** The body outline wasn't found where the torso should be on a measurement row. */
+export class EdgesNotFoundError extends Error {
+  readonly where: EdgeRow;
+
+  constructor(where: EdgeRow, y: number) {
+    super(`No person pixels at the torso centre on the ${where} row (${y})`);
+    this.name = "EdgesNotFoundError";
+    this.where = where;
+  }
+}
+
 export function checkShoulder(edgeWidth: number, jointWidth: number): ShoulderCheck {
   const ratio = edgeWidth / jointWidth;
   if (ratio > SHOULDER_EDGE_TO_JOINT_MAX) return "too_wide";
@@ -159,15 +213,15 @@ export function measureFront(
   const shoulderJointWidthPx = distance(points.leftShoulder, points.rightShoulder);
   const hipWidthPx = distance(points.leftHip, points.rightHip);
 
-  const edgesAt = (y: number, what: string) => {
+  const edgesAt = (y: number, where: EdgeRow) => {
     const edges = findBodyEdges(maskRowAt(y), centerX, personValue);
-    if (!edges) throw new Error(`No person pixels at the torso centre on the ${what} row (${y})`);
+    if (!edges) throw new EdgesNotFoundError(where, y);
     return edges;
   };
 
   // Both widths are edge to edge on the mask, so the ratio compares like with like.
   const shoulderY = shoulderRowY(points);
-  const shoulderEdges = edgesAt(shoulderY, "shoulder");
+  const shoulderEdges = edgesAt(shoulderY, "shoulders");
   const shoulderWidthPx = shoulderEdges.right - shoulderEdges.left;
 
   const waistY = waistRowY(points);
@@ -188,5 +242,6 @@ export function measureFront(
     shoulderToWaist: shoulderWidthPx / waistWidthPx,
     shoulderIndex: shoulderWidthPx / hipWidthPx,
     waistIndex: waistWidthPx / hipWidthPx,
+    torsoLengthPx: distance(midpoint(points.leftShoulder, points.rightShoulder), midpoint(points.leftHip, points.rightHip)),
   };
 }

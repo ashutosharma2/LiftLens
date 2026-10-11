@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  missingParts,
   checkShoulder,
   distance,
   findBodyEdges,
@@ -155,5 +156,46 @@ describe("measureFront", () => {
   it("throws a clear error when no person is at the torso centre", () => {
     const row = Array(100).fill(B);
     expect(() => measureFront(BODY, 100, 200, () => row, P)).toThrow(/No person pixels/);
+  });
+});
+
+describe("missingParts", () => {
+  const seen = { visibility: 0.9 };
+  const body = (overrides: Record<number, Landmark> = {}) =>
+    landmarksWith({
+      [LANDMARK.LEFT_SHOULDER]: { x: 0.7, y: 0.2, ...seen },
+      [LANDMARK.RIGHT_SHOULDER]: { x: 0.3, y: 0.2, ...seen },
+      [LANDMARK.LEFT_HIP]: { x: 0.6, y: 0.7, ...seen },
+      [LANDMARK.RIGHT_HIP]: { x: 0.4, y: 0.7, ...seen },
+      ...overrides,
+    });
+
+  it("is empty when all four joints are in frame and clearly seen", () => {
+    expect(missingParts(body())).toEqual([]);
+  });
+
+  it("reports a joint outside the frame", () => {
+    expect(missingParts(body({ [LANDMARK.LEFT_HIP]: { x: 0.6, y: 1.08, ...seen } }))).toEqual(["hips"]);
+  });
+
+  it("reports a joint MediaPipe isn't sure about", () => {
+    expect(missingParts(body({ [LANDMARK.RIGHT_SHOULDER]: { x: 0.3, y: 0.2, visibility: 0.3 } }))).toEqual(["shoulders"]);
+  });
+
+  it("reports each part once", () => {
+    const parts = missingParts(
+      body({ [LANDMARK.LEFT_SHOULDER]: { x: -0.1, y: 0.2, ...seen }, [LANDMARK.RIGHT_SHOULDER]: { x: 1.1, y: 0.2, ...seen } }),
+    );
+    expect(parts).toEqual(["shoulders"]);
+  });
+});
+
+describe("torso length", () => {
+  it("is the distance from the shoulder midpoint to the hip midpoint", () => {
+    const span = (from: number, to: number) => Array.from({ length: 100 }, (_, x) => (x >= from && x <= to ? P : B));
+    const rows: Record<number, number[]> = { 40: span(22, 78), 105: span(30, 70) };
+    const result = measureFront(BODY, 100, 200, (y) => rows[y] ?? span(0, -1), P);
+    // shoulders midpoint (50, 40), hips midpoint (50, 140)
+    expect(result.torsoLengthPx).toBeCloseTo(100);
   });
 });
