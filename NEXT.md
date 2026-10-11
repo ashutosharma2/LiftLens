@@ -8,6 +8,7 @@ Still open:
 - Change the Cognito password (it appeared in a screenshot during M2's smoke test).
 - Confirm models.ts works in a real browser and that the segmenter's person value is 0.
 - Confirm the camera light goes off as soon as the photo is taken.
+- Right after step 3, before M4: calibrate the noise threshold (BACKLOG) — ~5 front photos in one session, set NOISE_THRESHOLD to about 2× their spread, update docs/scoring.md. Every "no clear change" depends on it.
 
 Done when: a photo taken in the local app is measured and saved, and the new result appears on History.
 
