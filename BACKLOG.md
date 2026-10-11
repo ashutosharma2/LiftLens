@@ -8,6 +8,7 @@
 - [x] M0.6 ADR-001: Serverless + Terraform (vs FastAPI/Postgres and vs the CDK scaffold)
 
 ## Later
+- [ ] After M3: system-design doc (non-functional requirements decided by Ashu, capacity check, failure modes, threat model, accepted risks) + free CloudWatch alarms on API errors and throttling
 - [ ] M3: once the browser signs in with SRP, decide whether to keep USER_PASSWORD_AUTH on the app client (currently there for CLI smoke tests)
 - [ ] Consider lowering the API Lambda to 128 MB (peak use 110 MB) after M3 load is known
 - [ ] Steadier ruler for the indexes (combine joints and torso length, or median of 3 photos); recompute history from stored pixel ingredients
