@@ -28,7 +28,7 @@ Progress photos are compared by eye, and lighting, camera distance, posture and 
 
 ## Architecture
 
-Solid boxes and arrows are built; dashed ones are planned.
+Solid boxes and arrows are built; dashed ones are planned. **[All 15 architecture diagrams](docs/architecture.md)**: containers, components, infrastructure, identity, trust boundaries, sign-in, capture states, the measurement pipeline, saving, scoring, the data model, guardrails and deployment.
 
 ```mermaid
 flowchart LR

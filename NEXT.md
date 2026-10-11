@@ -13,6 +13,6 @@ Still open:
 Done when: a photo taken in the local app is measured and saved, and the new result appears on History.
 
 ## End of every milestone
-- Update README.md: status table, architecture diagram (solid = built, dashed = planned), key decisions.
+- Update README.md (status table, key decisions) and docs/architecture.md (all diagrams; solid = built, dashed = planned).
 - Update docs/project-story.md: new actions, results and every real error hit (problem, cause, fix, lesson).
 - Commit, add one line to LOG.md, set the next single task here.
