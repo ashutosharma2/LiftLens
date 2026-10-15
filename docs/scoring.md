@@ -4,9 +4,9 @@
 
 - **Scenario:** each saved measurement needs a score that tells the user whether their shape is changing, with nothing hidden.
 - **Obstacle:** a score needs a reference point; an "ideal body" target is unscientific and alienating, invented points hide the real number, and photo-to-photo noise can look like progress.
-- **Action:** score only the steady shoulder-to-waist ratio; show it as is on the first photo, then as a percent change against the user's own first photo; treat changes under ±2% as noise; return the formula, inputs and a one-sentence explanation with every result.
+- **Action:** score only the steady shoulder-to-waist ratio; show it as is on the first photo, then as a percent change against the user's own first photo; treat changes under ±2.4% (calibrated from 10 repeat photos) as noise; return the formula, inputs and a one-sentence explanation with every result.
 - **Result:** every number can be checked by hand ((1.78 − 1.70) ÷ 1.70 = 4.7%); 20 tests cover rises, falls, noise, flagged photos and bad input.
-- **Troubleshooting:** the hip-normalised indexes were first expected to vary about 3% between photos but varied 11% on two same-session photos, so they were left out of the score; the first calibration photos in a cluttered room measured furniture as part of the body, which led to a new outline method and one baseline per method ([ADR-007](adr/007-pose-model-outline.md)); the ±2% noise threshold is a placeholder until it's calibrated on that method (see below).
+- **Troubleshooting:** the hip-normalised indexes were first expected to vary about 3% between photos but varied 11% on two same-session photos, so they were left out of the score; the first calibration photos in a cluttered room measured furniture as part of the body, which led to a new outline method and one baseline per method ([ADR-007](adr/007-pose-model-outline.md)); the ±2% placeholder noise threshold was then calibrated on that method to ±2.4% (see below).
 
 The rest of this document is the reference specification.
 
@@ -56,7 +56,7 @@ Riya's shoulder-to-waist ratio over three photos:
 | Photo | Ratio | Result | Explanation |
 |---|---|---|---|
 | Week 0 | 1.70 | baseline | "Your shoulders are 1.70× as wide as your waist." |
-| Week 4 | 1.71 | +0.6%, no clear change | "Your shoulder-to-waist ratio changed +0.6% since your first photo (1.70 → 1.71), within the ±2% measurement noise, so there's no clear change yet." |
+| Week 4 | 1.71 | +0.6%, no clear change | "Your shoulder-to-waist ratio changed +0.6% since your first photo (1.70 → 1.71), within the ±2.4% measurement noise, so there's no clear change yet." |
 | Week 12 | 1.78 | +4.7%, increased | "Your shoulder-to-waist ratio rose 4.7% since your first photo (1.70 → 1.78)." |
 
 Check week 12 by hand: (1.78 − 1.70) ÷ 1.70 × 100 = 4.7.
@@ -65,8 +65,28 @@ Check week 12 by hand: (1.78 − 1.70) ÷ 1.70 × 100 = 4.7.
 
 Photos of an unchanged body still vary a little (angle, posture, lighting). A change smaller than `NOISE_THRESHOLD` is reported as "no clear change".
 
-- Current value: **±2%**, a cautious placeholder.
-- To calibrate it: take about 5 front photos in one session, measure the shoulder-to-waist ratio of each, and set the threshold to about **twice their spread** (largest minus smallest, as a fraction of the average). Update the constant and this section.
+- Current value: **±2.4%**, calibrated on 2026-10-15 for method `2026-10-posemask-v1`. It replaced a ±2% placeholder.
+
+**How it was calibrated.** The rule was chosen before any photos were taken, so the numbers couldn't steer it:
+
+1. Take **10 front photos** of an unchanged body in one session. Between photos, walk away, re-stand and set the phone up again, as a real weekly check-in would. Keep the same spot, light, clothes and one relaxed pose (arms slightly out, hands off the body). Leave out flagged photos.
+2. Measure the wobble of one photo as the **standard deviation** (sample SD, dividing by n − 1) as a fraction of the average. Unlike the range, it doesn't grow with more photos or blow up on one bad one.
+3. A change compares **two** photos, and both wobble, so the gap between them wobbles **√2 ≈ 1.41×** as much.
+4. Threshold = **2 × the gap's SD**, rounded **up** to the nearest 0.1%. About 95% of pure-noise changes then fall inside the band: roughly one false "change" in 20 check-ins, accepted in exchange for showing real progress sooner.
+
+**The readings** (shoulder-to-waist, read from the app):
+
+| | |
+|---|---|
+| Readings | 1.91, 1.89, 1.92, 1.90, 1.93, 1.88, 1.91, 1.90, 1.92, 1.89 |
+| Average | 1.905 |
+| One photo's SD | 0.83% |
+| Gap SD (× 1.41) | 1.17% |
+| 2 × gap SD | 2.35% → **2.4%** |
+
+Run `python3 dev/noise.py <readings>` to repeat the calculation. The readings were noted to two decimals; removing that rounding's share of the spread gives 2.31%, which still rounds up to 2.4%.
+
+**Limits.** One session can't include what changes from week to week: lighting, food and water, time of day, a post-workout pump. Treat ±2.4% as the smallest noise to expect. Noise belongs to a method: a new `methodVersion`, and back photos, need their own calibration.
 
 ## Input checks
 

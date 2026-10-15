@@ -90,7 +90,7 @@ My first instinct was to run the pose model in a Lambda. When I weighed it prope
 
 ### 9. Made measuring survive an ordinary room
 
-- Started calibrating the noise threshold by deciding the method first: **10 repeat photos**, re-standing and re-propping the phone between each, threshold = **2 × the standard deviation of the gap between two photos**, chosen before seeing any numbers. A calculator script makes the maths repeatable.
+- Calibrated the noise threshold by deciding the method first: **10 repeat photos**, re-standing and re-propping the phone between each, threshold = **2 × the standard deviation of the gap between two photos**, chosen before seeing any numbers. A calculator script makes the maths repeatable. Ten readings on the new method gave **±2.4%**, replacing the ±2% placeholder.
 - The first photos, taken in a lived-in bedroom, gave impossible ratios. **Drawing the mask over the photo** showed the outline model painting a chair, dark bedding and my arms as part of me.
 - Compared outline models on the same photos and **switched to the pose model's own outline**, which fixed every failure, removed a model download and is calibrated before it ships ([ADR-007](adr/007-pose-model-outline.md)).
 - Because stored measurements can't be re-measured, made **one baseline per measuring method**: scores never compare two rulers, old check-ins stay in the record, labelled.

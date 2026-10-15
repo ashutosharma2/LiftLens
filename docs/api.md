@@ -97,7 +97,7 @@ Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10
     "value": 4.88,
     "status": "increased",
     "formula": "(current - baseline) / baseline × 100",
-    "inputs": {"current": 1.783, "baseline": 1.7, "noise_threshold": 0.02},
+    "inputs": {"current": 1.783, "baseline": 1.7, "noise_threshold": 0.024},
     "explanation": "Your shoulder-to-waist ratio rose 4.9% since your first photo (1.70 → 1.78)."
   },
   "sinceLast": {
@@ -105,7 +105,7 @@ Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10
     "value": 3.06,
     "status": "increased",
     "formula": "(current - previous) / previous × 100",
-    "inputs": {"current": 1.783, "previous": 1.73, "noise_threshold": 0.02},
+    "inputs": {"current": 1.783, "previous": 1.73, "noise_threshold": 0.024},
     "explanation": "Your shoulder-to-waist ratio rose 3.1% since your previous check-in (1.73 → 1.78)."
   }
 }
@@ -123,7 +123,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
 {
   "currentMethodVersion": "2026-10-posemask-v1",
   "baselineTimestamp": "2026-09-01T08:00:00Z",
-  "noiseThreshold": 0.02,
+  "noiseThreshold": 0.024,
   "measurements": [
     {
       "timestamp": "2026-09-01T08:00:00Z",
@@ -147,7 +147,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
 }
 ```
 
-`currentMethodVersion` is the method of the most recent item (`null` with no items); the app's trend shows only items of this method. `baselineTimestamp` is that method's baseline, `null` until it has an `ok` measurement. `isBaseline` is true for every method's baseline. `noiseThreshold` is the server's noise band (0.02 = ±2%), so the app's chart always matches the score.
+`currentMethodVersion` is the method of the most recent item (`null` with no items); the app's trend shows only items of this method. `baselineTimestamp` is that method's baseline, `null` until it has an `ok` measurement. `isBaseline` is true for every method's baseline. `noiseThreshold` is the server's noise band (0.024 = ±2.4%), so the app's chart always matches the score.
 
 `sinceLast` is the change since the previous `ok` measurement of the same method (flagged ones are skipped), scored with the same rule as the main score. It's `null` for flagged items and for the first `ok` item of each method. The app displays it; it never computes it.
 

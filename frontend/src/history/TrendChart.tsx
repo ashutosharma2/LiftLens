@@ -15,7 +15,7 @@ function shortDate(timestamp: string): string {
 }
 
 /**
- * Shoulder-to-waist over time: a dashed baseline, a shaded ±2% noise band and
+ * Shoulder-to-waist over time: a dashed baseline, a shaded noise band and
  * one point per scored check-in (flagged ones are left out by the caller).
  * Lines are SVG stretched to the box; points are HTML buttons so they stay
  * round, can be tapped, and can be reached with the keyboard.
@@ -27,7 +27,7 @@ export function TrendChart({
 }: {
   items: HistoryItem[]
   baseline: number
-  /** From the server (0.02 = ±2%), so the band always matches the score. */
+  /** From the server (0.024 = ±2.4%), so the band always matches the score. */
   noiseThreshold: number
 }) {
   const [active, setActive] = useState<number | null>(null)

@@ -10,7 +10,7 @@ Progress photos are compared by eye, and lighting, camera distance, posture and 
 
 - **Measures in your browser.** A pose model and a body-outline model run on your own device and measure your shoulder and waist widths. The photo is never uploaded ([ADR-002](docs/adr/002-pose-extraction-in-browser.md)).
 - **Tracks one honest number.** Your shoulder-to-waist ratio, measured edge to edge on your outline. Ratios don't depend on how far away the camera was, so photos stay comparable ([ADR-004](docs/adr/004-scale-free-measurements.md)).
-- **Explains every result.** Your first photo shows the ratio; later photos show the percent change since then, with the formula, the inputs and a one-sentence explanation. Changes within ±2% are reported as noise, not progress ([scoring](docs/scoring.md)).
+- **Explains every result.** Your first photo shows the ratio; later photos show the percent change since then, with the formula, the inputs and a one-sentence explanation. Changes within ±2.4%, calibrated from 10 repeat photos, are reported as noise, not progress ([scoring](docs/scoring.md)).
 - **Compares you only with you.** No "ideal body", no comparison with other users.
 - **Costs $0/month to run**, enforced by automatic guardrails.
 

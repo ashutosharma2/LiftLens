@@ -17,8 +17,9 @@ from dataclasses import dataclass, field
 from math import isfinite
 
 # Changes smaller than this (as a fraction) are treated as measurement noise.
-# Placeholder until calibrated from same-session photos (see docs/scoring.md).
-NOISE_THRESHOLD = 0.02
+# Calibrated on 2026-10-15 from 10 repeat photos with method 2026-10-posemask-v1:
+# 2 x the SD of the gap between two photos, rounded up (docs/scoring.md, dev/noise.py).
+NOISE_THRESHOLD = 0.024
 
 # Shoulder-to-waist ratios outside this range are rejected as implausible.
 MIN_RATIO = 0.8
