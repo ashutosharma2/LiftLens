@@ -74,6 +74,11 @@ def flagged_result(shoulder_to_waist: float, shoulder_check: str) -> ScoreResult
     )
 
 
+def format_percent(fraction: float) -> str:
+    """A fraction as a percent with up to one decimal: 0.02 -> "2%", 0.025 -> "2.5%"."""
+    return f"{fraction * 100:.1f}".removesuffix(".0") + "%"
+
+
 def _change_result(current: float, reference: float, reference_label: str, since: str, name: str) -> ScoreResult:
     """Percent change from a reference ratio, with the noise rule. Shared by every change score."""
     current = validate_ratio(current, "current")
@@ -87,7 +92,7 @@ def _change_result(current: float, reference: float, reference_label: str, since
         status = "no_clear_change"
         explanation = (
             f"Your shoulder-to-waist ratio changed {percent:+.1f}% since {since} {numbers}, "
-            f"within the ±{NOISE_THRESHOLD:.0%} measurement noise, so there's no clear change yet."
+            f"within the ±{format_percent(NOISE_THRESHOLD)} measurement noise, so there's no clear change yet."
         )
     elif change > 0:
         status = "increased"

@@ -10,6 +10,7 @@ import pytest
 from app import Deps, route
 from auth import verify_token
 from conftest import CLIENT_ID, ISSUER, body_json
+from score import NOISE_THRESHOLD
 
 
 @pytest.fixture
@@ -77,14 +78,14 @@ def test_get_returns_history_with_scores_oldest_first(deps, clock, make_token):
     assert [m["score"]["status"] for m in body["measurements"]] == ["flagged", "baseline"]
     assert body["baselineTimestamp"] == body["measurements"][1]["timestamp"]
     assert [m["sinceLast"] for m in body["measurements"]] == [None, None]
-    assert body["noiseThreshold"] == 0.02
+    assert body["noiseThreshold"] == NOISE_THRESHOLD
 
 
 def test_users_only_see_their_own_history(deps, make_token):
     call(deps, method="POST", token=make_token(sub="alice"), body=body_json())
     status, body = call(deps, token=make_token(sub="bob"))
     assert status == 200
-    assert body == {"baselineTimestamp": None, "noiseThreshold": 0.02, "measurements": []}
+    assert body == {"baselineTimestamp": None, "noiseThreshold": NOISE_THRESHOLD, "measurements": []}
 
 
 def test_base64_bodies_are_decoded(deps, make_token):

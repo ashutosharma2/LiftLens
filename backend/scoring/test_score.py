@@ -1,6 +1,6 @@
 import pytest
 
-from score import NOISE_THRESHOLD, flagged_result, progress_result, ratio_result, since_previous_result
+from score import NOISE_THRESHOLD, flagged_result, format_percent, progress_result, ratio_result, since_previous_result
 
 
 class TestRatioResult:
@@ -34,7 +34,7 @@ class TestProgressResult:
         result = progress_result(current=1.71, baseline=1.70)
         assert result.status == "no_clear_change"
         assert result.value == pytest.approx(0.588, rel=1e-3)
-        assert "within the ±2% measurement noise" in result.explanation
+        assert f"within the ±{format_percent(NOISE_THRESHOLD)} measurement noise" in result.explanation
 
     def test_exactly_the_threshold_counts_as_a_change(self):
         result = progress_result(current=1.0 + NOISE_THRESHOLD, baseline=1.0)
@@ -88,3 +88,12 @@ class TestSincePreviousResult:
     def test_names_the_bad_input(self):
         with pytest.raises(ValueError, match="previous"):
             since_previous_result(current=1.7, previous=9.0)
+
+
+class TestFormatPercent:
+    @pytest.mark.parametrize(
+        ("fraction", "label"),
+        [(0.02, "2%"), (0.025, "2.5%"), (0.031, "3.1%"), (0.1, "10%")],
+    )
+    def test_shows_one_decimal_only_when_needed(self, fraction, label):
+        assert format_percent(fraction) == label
