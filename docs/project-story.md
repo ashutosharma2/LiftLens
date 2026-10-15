@@ -214,6 +214,12 @@ Each entry gives the problem, its root cause, the fix, and what I took away from
 - *Cause:* MediaPipe logs this informational message at error level.
 - *Fix:* none needed; the models ran correctly. Worth knowing so real errors aren't missed among them.
 
+**The explanation would have misreported a calibrated threshold.**
+- *Problem:* before calibrating the noise threshold, a search for every place it appears showed the explanation sentence formatted it with no decimals (`:.0%`).
+- *Cause:* the formatting was written when the threshold was a round 2%. A calibrated 2.5% would have read "±2%" while the chart showed "±2.5%".
+- *Fix:* a small `format_percent` helper shows one decimal only when needed, and the tests read the constant instead of a hard-coded 2%.
+- *Lesson:* before changing a number, find everywhere it's used, including how it's formatted.
+
 ### Design problems found by testing
 
 **The headline ratio compared two different things.**
