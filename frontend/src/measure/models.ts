@@ -32,7 +32,9 @@ export const PERSON_CONFIDENCE = 0.5;
 export async function loadModels(paths: ModelPaths): Promise<Models> {
   const fileset = await FilesetResolver.forVisionTasks(paths.wasmBase);
   const pose = await PoseLandmarker.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: paths.poseModel },
+    // GPU: on the CPU delegate, tasks-vision 1.1.0 aborts when returning the
+    // segmentation mask ("Check failed: 1 == ChannelSize() (1 vs. 4)").
+    baseOptions: { modelAssetPath: paths.poseModel, delegate: "GPU" },
     runningMode: "IMAGE",
     numPoses: 1,
     // The pose model's own outline: it separates a person from dark furniture

@@ -14,12 +14,14 @@ Outputs stay in dev/fixtures/, which is gitignored.
 import json
 from pathlib import Path
 
+import cv2
 import mediapipe as mp
 from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision
 
 FIXTURES = Path("dev/fixtures")
 POSE_MODEL = "dev/pose_landmarker_lite.task"
+MAX_PHOTO_SIDE = 2048  # same as MAX_PHOTO_SIDE in frontend/src/capture/photo.ts
 PERSON_VALUE = 1  # mask rows hold 1 where the pose model sees the person
 PERSON_CONFIDENCE = 0.5  # same as PERSON_CONFIDENCE in frontend/src/measure/models.ts
 LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP = 11, 12, 23, 24
@@ -46,8 +48,18 @@ def walk_edges(row, center_x):
     return left, right
 
 
+def load_fitted(image_path):
+    """The photo shrunk to MAX_PHOTO_SIDE on its long side, as the app does before measuring."""
+    rgb = cv2.cvtColor(cv2.imread(str(image_path)), cv2.COLOR_BGR2RGB)
+    h, w = rgb.shape[:2]
+    scale = min(1, MAX_PHOTO_SIDE / max(w, h))
+    if scale < 1:
+        rgb = cv2.resize(rgb, (round(w * scale), round(h * scale)), interpolation=cv2.INTER_AREA)
+    return mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+
+
 def export(image_path, landmarker):
-    image = mp.Image.create_from_file(str(image_path))
+    image = load_fitted(image_path)
     w, h = image.width, image.height
 
     pose = landmarker.detect(image)

@@ -15,7 +15,7 @@ Every width LiftLens measures comes from a body outline: the app walks along one
 
 ## Action
 
-**The outline comes from the pose model itself.** The pose landmarker can return its own segmentation mask (`outputSegmentationMasks`). A pixel counts as the person when the model is at least 50% sure. It's the model already loaded, so the selfie segmenter is no longer downloaded. The measuring maths is unchanged; only the mask source is new. This is method version `2026-10-posemask-v1`.
+**The outline comes from the pose model itself.** The pose landmarker can return its own segmentation mask (`outputSegmentationMasks`). A pixel counts as the person when the model is at least 50% sure. It's the model already loaded, so the selfie segmenter is no longer downloaded. The measuring maths is unchanged; only the mask source is new. Photos are shrunk to at most 2,048 px on their long side when captured: the pose model works at 256 px internally, the ratio was unchanged (1.898 at full size and at 2,048), and MediaPipe ran out of memory on 24-megapixel phone photos. The model runs on the GPU, because on the CPU tasks-vision 1.1.0 aborts when it returns the mask. This is method version `2026-10-posemask-v1`.
 
 **Scores never compare across methods.** Each method version has its own baseline: the earliest `ok` check-in of that method. "Since your first photo" and "since last check-in" compare only check-ins of the same method. History shows the method of the most recent check-in; check-ins from earlier methods stay in the list, labelled and out of the trend. The API accepts new check-ins only with the current method, so an outdated app can't keep adding measurements made with the old ruler.
 
@@ -37,4 +37,5 @@ Alternatives considered:
 ## Troubleshooting
 
 - **Found by drawing the mask.** Guessing at causes (arms, distance, angle) didn't explain the bad numbers. Overlaying the mask on the photo showed the furniture painted as the person within minutes.
+- **The first real upload froze on "Finding your pose and outline".** Reproduced in a browser: on the CPU delegate MediaPipe aborted with `Check failed: 1 == ChannelSize() (1 vs. 4)` when returning the mask, and a 24-megapixel photo also exhausted its memory. Fixed with the GPU delegate and the 2,048 px cap, then checked with a 24 MP upload measured three times in a row.
 - **The two reference photos disagree under the new outline** (1.893 vs 1.745). Zooming into front1's waist showed the new outline is right: the old one had filled the forearm gap. The photos use different poses, so pose consistency matters; it becomes a check for the capture guidance.
