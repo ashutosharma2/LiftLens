@@ -5,15 +5,14 @@ import { saveMeasurement, SignedOutError } from '../api/client'
 import { apiDeps } from '../auth/session'
 import { FULL_HEIGHT, PhotoView, Stage } from '../capture/Stage'
 import { assess, outcomeMessage, type Outcome } from '../measure/checkin'
-import { detectPose, PERSON_VALUE, preloadModels, segmentMask } from '../measure/models'
+import { detectPerson, PERSON_VALUE, preloadModels } from '../measure/models'
 import { Button, Notice } from '../ui/kit'
 
-type Step = 'loading' | 'pose' | 'outline' | 'measuring'
+type Step = 'loading' | 'pose' | 'measuring'
 
 const STEPS: { id: Step; label: string }[] = [
   { id: 'loading', label: 'Loading models' },
-  { id: 'pose', label: 'Finding your pose' },
-  { id: 'outline', label: 'Finding your outline' },
+  { id: 'pose', label: 'Finding your pose and outline' },
   { id: 'measuring', label: 'Measuring' },
 ]
 
@@ -45,13 +44,12 @@ export function MeasureStep({ photo, onRetake }: { photo: HTMLCanvasElement; onR
         const models = await preloadModels()
         show('pose')
         await nextFrame()
-        const landmarks = detectPose(models, photo)
-        show('outline')
-        await nextFrame()
-        const maskRowAt = landmarks ? segmentMask(models, photo) : () => new Uint8Array(0)
+        const person = detectPerson(models, photo)
         show('measuring')
         await nextFrame()
-        const outcome = assess(landmarks, photo.width, photo.height, maskRowAt, PERSON_VALUE)
+        const outcome = person
+          ? assess(person.landmarks, photo.width, photo.height, person.maskRowAt, PERSON_VALUE)
+          : assess(null, photo.width, photo.height, () => new Uint8Array(0), PERSON_VALUE)
         if (!cancelled) setState({ kind: 'done', outcome })
       } catch {
         if (!cancelled) {

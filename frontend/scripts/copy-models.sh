@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Copies the MediaPipe runtime and model files into public/ so the app serves
+# Copies the MediaPipe runtime and pose model into public/ so the app serves
 # them itself (ADR-002). Both folders are gitignored: model files are never
-# committed. The models come from dev/ (see dev/landmark_test.py for their source).
+# committed. The model comes from dev/ (see dev/landmark_test.py for its source).
 # Usage: npm run models   (also runs before `npm run dev`)
 set -euo pipefail
 
@@ -12,7 +12,7 @@ mkdir -p "$here/public/mediapipe/wasm" "$here/public/models"
 cp "$here"/node_modules/@mediapipe/tasks-vision/wasm/* "$here/public/mediapipe/wasm/"
 
 missing=0
-for model in pose_landmarker_lite.task selfie_segmenter.tflite; do
+for model in pose_landmarker_lite.task; do
   if [[ -f "$dev/$model" ]]; then
     cp "$dev/$model" "$here/public/models/"
   else

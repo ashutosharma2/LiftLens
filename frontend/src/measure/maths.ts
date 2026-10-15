@@ -36,11 +36,12 @@ export const SHOULDER_EDGE_TO_JOINT_MAX = 1.8;
 export type ShoulderCheck = "ok" | "too_wide" | "too_narrow";
 
 /**
- * Version of this measurement maths, stored with every saved measurement so
- * results from different versions can be told apart (ADR-005). Must be one the
- * API accepts (KNOWN_METHOD_VERSIONS in backend/api/validation.py).
+ * Version of the measuring method (where the outline comes from, plus this
+ * maths), stored with every saved measurement. Scores only compare measurements
+ * of the same version (ADR-005, ADR-007). Must be the one the API accepts
+ * (KNOWN_METHOD_VERSIONS in backend/api/validation.py).
  */
-export const METHOD_VERSION = "2026-10-edge-v1";
+export const METHOD_VERSION = "2026-10-posemask-v1";
 
 /** A joint counts as seen when MediaPipe's visibility score is at least this. */
 export const MIN_VISIBILITY = 0.5;
