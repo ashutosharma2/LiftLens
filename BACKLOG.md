@@ -15,6 +15,7 @@
 - [ ] Steadier ruler for the indexes (combine joints and torso length, or median of 3 photos); recompute history from stored pixel ingredients
 - [ ] Calibrate the scoring noise threshold: ~5 front photos in one session, set NOISE_THRESHOLD to about 2x the spread (docs/scoring.md)
 - [ ] Arms against the sides merge with the torso in the mask, so the waist is measured edge of arm to edge of arm (seen: ratio 0.74, offered Save; the server rejects < 0.8). Decide how the browser detects it (retake, per "retake what's meaningless") and check the 0.8-3.0 range before offering Save
+- [ ] The outline model (selfie_segmenter, built for close-up video calls) merges dark furniture touching the body into the person in a cluttered room at distance (seen 2026-10-15: chair and bedding painted as person, ratios 1.06 and 0.80 vs 1.78 against a plain wall). Decide how the browser detects a bad outline (e.g. waist edges reaching the wrist landmarks) and whether the setup tips need "plain wall behind you"; a sideways (landscape) photo was also accepted without a warning
 - [x] When the Lambda concurrency quota increase is approved: add reserved concurrency (kill switch, API) and close the ADR exception
 - [ ] ADR (later): move the app into a separate member AWS account (SCPs apply there; keeps management account empty)
 - [x] ADR-002: pose extraction in browser (MediaPipe JS) vs container-image Lambda
