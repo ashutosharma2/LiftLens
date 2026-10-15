@@ -16,7 +16,7 @@ def error_of(raw):
 def test_valid_body_is_parsed():
     ing = parse_body(body_json())
     assert ing.shoulder_edge_px == 1029.0
-    assert ing.method_version == "2026-10-edge-v1"
+    assert ing.method_version == "2026-10-posemask-v1"
 
 
 def test_body_over_2kb_is_413():
@@ -52,7 +52,7 @@ def test_pixel_values_must_be_numbers_in_range(bad):
     assert "hipJointPx" in err.message
 
 
-@pytest.mark.parametrize("version", ["2020-01-old", "", 1])
+@pytest.mark.parametrize("version", ["2026-10-edge-v1", "2020-01-old", "", 1])
 def test_method_version_must_be_known(version):
     err = error_of(body_json(methodVersion=version))
     assert err.message == "methodVersion is not a known version"

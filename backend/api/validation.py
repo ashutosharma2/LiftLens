@@ -11,7 +11,10 @@ MAX_BODY_BYTES = 2048
 MIN_PX = 1
 MAX_PX = 10_000
 PIXEL_FIELDS = ("shoulderEdgePx", "waistEdgePx", "shoulderJointPx", "hipJointPx", "torsoLengthPx")
-KNOWN_METHOD_VERSIONS = {"2026-10-edge-v1"}
+# Methods a new measurement may use: only the current one, so an outdated app
+# can't add check-ins measured with an old ruler. Stored cards of earlier
+# methods stay readable (ADR-007). Same as METHOD_VERSION in frontend/src/measure/maths.ts.
+KNOWN_METHOD_VERSIONS = {"2026-10-posemask-v1"}
 
 
 @dataclass(frozen=True)

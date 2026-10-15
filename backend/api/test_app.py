@@ -79,13 +79,19 @@ def test_get_returns_history_with_scores_oldest_first(deps, clock, make_token):
     assert body["baselineTimestamp"] == body["measurements"][1]["timestamp"]
     assert [m["sinceLast"] for m in body["measurements"]] == [None, None]
     assert body["noiseThreshold"] == NOISE_THRESHOLD
+    assert body["currentMethodVersion"] == "2026-10-posemask-v1"
 
 
 def test_users_only_see_their_own_history(deps, make_token):
     call(deps, method="POST", token=make_token(sub="alice"), body=body_json())
     status, body = call(deps, token=make_token(sub="bob"))
     assert status == 200
-    assert body == {"baselineTimestamp": None, "noiseThreshold": NOISE_THRESHOLD, "measurements": []}
+    assert body == {
+        "currentMethodVersion": None,
+        "baselineTimestamp": None,
+        "noiseThreshold": NOISE_THRESHOLD,
+        "measurements": [],
+    }
 
 
 def test_base64_bodies_are_decoded(deps, make_token):

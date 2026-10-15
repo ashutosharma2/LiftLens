@@ -69,13 +69,13 @@ def _post(event: dict, user_id: str, deps: Deps) -> dict:
     deps.store.put(card)
 
     cards = deps.store.list_for_user(user_id)
-    baseline, scored = score_history(cards)
-    result = next(r for c, r in scored if c["timestamp"] == card["timestamp"])
+    history = score_history(cards)
+    result = next(r for c, r in history.items if c["timestamp"] == card["timestamp"])
     since = since_previous(cards).get(card["timestamp"])
     return _response(
         201,
         {
-            "measurement": public_card(card, baseline),
+            "measurement": public_card(card, card["timestamp"] in history.baseline_timestamps),
             "score": score_dict(result),
             "sinceLast": score_dict(since) if since else None,
         },
@@ -84,18 +84,24 @@ def _post(event: dict, user_id: str, deps: Deps) -> dict:
 
 def _get(user_id: str, deps: Deps) -> dict:
     cards = deps.store.list_for_user(user_id)
-    baseline, scored = score_history(cards)
+    history = score_history(cards)
     since = since_previous(cards)
     measurements = [
         {
-            **public_card(card, baseline),
+            **public_card(card, card["timestamp"] in history.baseline_timestamps),
             "score": score_dict(result),
             "sinceLast": score_dict(since[card["timestamp"]]) if card["timestamp"] in since else None,
         }
-        for card, result in scored
+        for card, result in history.items
     ]
     return _response(
-        200, {"baselineTimestamp": baseline, "noiseThreshold": NOISE_THRESHOLD, "measurements": measurements}
+        200,
+        {
+            "currentMethodVersion": history.current_method,
+            "baselineTimestamp": history.baseline_timestamp,
+            "noiseThreshold": NOISE_THRESHOLD,
+            "measurements": measurements,
+        },
     )
 
 
