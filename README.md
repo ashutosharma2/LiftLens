@@ -21,8 +21,8 @@ Progress photos are compared by eye, and lighting, camera distance, posture and 
 | M0 Guardrails | ✅ | Budget alerts, budget action, kill switch, deployed and tested |
 | M1 Measurement engine | ✅ | Browser measurement (TypeScript) matching the Python prototype; scoring module |
 | M2 Auth, API, data | ✅ | Cognito sign-up, DynamoDB, measurements API live and smoke-tested |
-| M3 Frontend | ⏳ | Next: capture, preview, results, history chart |
-| M4 Deploy | | S3 + CloudFront |
+| M3 Frontend | ✅ | Sign-in, guided capture, measuring on the device, save, history with trend |
+| M4 Deploy | ⏳ | Next: S3 + CloudFront |
 | M5 CI/CD | | GitHub Actions with OIDC |
 | M6 Portfolio finish | | Screenshots, cost write-up |
 
@@ -55,7 +55,7 @@ flowchart LR
     classDef planned stroke-dasharray: 5 5
 ```
 
-The API and data are live; the browser app and CloudFront are next. Until CloudFront exists (M4), the API is reached directly at its Function URL.
+The API and data are live and the browser app works locally; hosting it on CloudFront is next (M4). Until then, the local dev server forwards `/api/*` to the Function URL.
 
 ### Cost guardrails
 
