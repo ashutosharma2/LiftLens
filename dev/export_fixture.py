@@ -1,7 +1,8 @@
 """Export reference numbers for the TypeScript measurement port.
 
 For each photo in dev/fixtures/, run the measurement logic (based on
-dev/landmark_test.py, with shoulders measured edge to edge like the waist)
+dev/landmark_test.py, with shoulders measured edge to edge like the waist,
+and the person outline taken from the pose model's own mask, see ADR-007)
 and save landmarks, the shoulder and waist mask rows and the resulting measurements to
 dev/fixtures/<name>.parity.json. frontend/src/measure/maths.parity.test.ts
 feeds the same inputs into maths.ts and checks the numbers match.
@@ -19,8 +20,8 @@ from mediapipe.tasks.python import vision
 
 FIXTURES = Path("dev/fixtures")
 POSE_MODEL = "dev/pose_landmarker_lite.task"
-SEGMENTER_MODEL = "dev/selfie_segmenter.tflite"
-PERSON_VALUE = 0  # as found in the prototype
+PERSON_VALUE = 1  # mask rows hold 1 where the pose model sees the person
+PERSON_CONFIDENCE = 0.5  # same as PERSON_CONFIDENCE in frontend/src/measure/models.ts
 LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP = 11, 12, 23, 24
 WAIST_FRACTION = 0.65
 
@@ -45,7 +46,7 @@ def walk_edges(row, center_x):
     return left, right
 
 
-def export(image_path, landmarker, segmenter):
+def export(image_path, landmarker):
     image = mp.Image.create_from_file(str(image_path))
     w, h = image.width, image.height
 
@@ -63,8 +64,9 @@ def export(image_path, landmarker, segmenter):
     hip_width = distance(lh, rh)
     torso_length = distance(((ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2), ((lh[0] + rh[0]) / 2, (lh[1] + rh[1]) / 2))
 
-    # The mask may come back as (h, w, 1); drop the channel axis.
-    mask = segmenter.segment(image).category_mask.numpy_view().squeeze()
+    # The pose model's confidence mask, (h, w) or (h, w, 1); thresholded into person / not.
+    confidence = pose.segmentation_masks[0].numpy_view().squeeze()
+    mask = (confidence >= PERSON_CONFIDENCE).astype("uint8") * PERSON_VALUE
     shoulder_mid_y = (ls[1] + rs[1]) / 2
     hip_mid_y = (lh[1] + rh[1]) / 2
     waist_y = int(shoulder_mid_y + WAIST_FRACTION * (hip_mid_y - shoulder_mid_y))
@@ -112,12 +114,9 @@ def export(image_path, landmarker, segmenter):
 
 def main():
     landmarker = vision.PoseLandmarker.create_from_options(
-        vision.PoseLandmarkerOptions(base_options=mp_python.BaseOptions(model_asset_path=POSE_MODEL))
-    )
-    segmenter = vision.ImageSegmenter.create_from_options(
-        vision.ImageSegmenterOptions(
-            base_options=mp_python.BaseOptions(model_asset_path=SEGMENTER_MODEL),
-            output_category_mask=True,
+        vision.PoseLandmarkerOptions(
+            base_options=mp_python.BaseOptions(model_asset_path=POSE_MODEL),
+            output_segmentation_masks=True,
         )
     )
     photos = [
@@ -125,7 +124,7 @@ def main():
         if p.suffix.lower() in {".jpg", ".jpeg", ".png"} and "_mask" not in p.stem and "_check" not in p.stem
     ]
     for photo in photos:
-        export(photo, landmarker, segmenter)
+        export(photo, landmarker)
 
 
 if __name__ == "__main__":
