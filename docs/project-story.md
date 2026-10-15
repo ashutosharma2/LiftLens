@@ -2,7 +2,7 @@
 
 Scenario, Obstacle, Action, Result, Troubleshooting. This is how LiftLens was planned and built, the decisions behind it, and what went wrong along the way. The detailed reasoning for each decision is in the [ADRs](adr/).
 
-**Status:** in progress. Cost guardrails (M0), the measurement engine (M1) and the backend (M2: sign-up, data and API, live in AWS) are done; the browser app (M3) is next.
+**Status:** in progress. Cost guardrails (M0), the measurement engine (M1), the backend (M2) and the browser app (M3) are done; hosting it on CloudFront (M4) is next.
 
 ---
 
@@ -78,9 +78,19 @@ My first instinct was to run the pose model in a Lambda. When I weighed it prope
 - Kept the API's address public for now: the token check protects the data, and a reserved concurrency of 2 caps the cost of junk requests.
 - Packaged the API's crypto library for Lambda's Linux on arm64, not for my Mac, and smoke-tested the live API: sign-up, email code, token, a saved measurement and the history read back.
 
-### 8. Documented as I went
+### 8. Built the browser app around the user's flow
 
-Five ADRs, an API contract, a scoring document and a README with architecture diagrams that mark what's built and what's planned.
+- Designed the app as **states** with clear ways in and out: sign in → history → guided capture → measuring → result → save. Returning users land on their history, not the camera.
+- Built **my own sign-in screens** with Amplify Auth (SRP, so the password never leaves the browser), so sign-in matches the app's look.
+- Designed capture for someone **alone**: the phone is propped up, a body outline and a 10-second countdown guide the pose so both arms are free for the shoulder check, with upload as a fallback. The camera turns off the moment the photo is taken.
+- Made **Save a separate step**, so a bad first photo can't silently become the permanent baseline.
+- Measured the photo **on the device**: the models start downloading as soon as the check-in screen opens, a scan line shows each step, and the shoulder and waist lines are drawn on the photo.
+- Turned photo quality into one rule: **retake what's meaningless, flag what's suspicious.** Nobody found, a joint cut off or unclear, or no outline means the numbers would be meaningless, so only a retake is offered; arms in the shoulder outline give real but doubtful numbers, which can be saved flagged.
+- Kept **all scoring on the server**: when "change since last check-in" was first built in the browser with its own copy of the noise rule, it moved into the API.
+
+### 9. Documented as I went
+
+Six ADRs, an API contract, a scoring document, 15 architecture diagrams that mark what's built and what's planned, and a README.
 
 ## R: Results
 
@@ -90,8 +100,9 @@ Five ADRs, an API contract, a scoring document and a README with architecture di
   - The TypeScript engine matches the Python reference within 1% on real photos.
   - Two photos of the same body gave shoulder-to-waist ratios of **1.784 and 1.785**.
   - Every score shows its formula, its inputs and a one-sentence explanation.
-- **Tested:** 21 TypeScript tests and 92 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
+- **Tested:** 73 TypeScript tests and 96 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
 - **Live backend:** a stranger can sign up with a verified email, save a measurement and read their history. The stored item holds exactly the ten designed fields: no photo, no email, no score. After the first (cold) request of about 1.5–2 seconds, requests take 1–19 ms.
+- **The whole chain works in a real browser:** the same photo measured 1.785 in the Python reference and 1.78 in the browser. A second check-in from the same session was correctly reported as "no clear change", and the camera light goes off as soon as the photo is taken.
 - **Decisions on record:** six ADRs, each with the alternatives I rejected and why.
 
 ## T: Troubleshooting
@@ -181,6 +192,27 @@ Each entry gives the problem, its root cause, the fix, and what I took away from
 - *Problem:* the first sign-up attempt failed with "Password not long enough".
 - *Cause:* the policy requires at least 12 characters with upper case, lower case and a number; the password typed didn't meet it.
 - *Fix:* generated a random 23-character password locally with `openssl rand`, so it never had to be typed or shown anywhere else. A rejected weak password is the policy working as intended.
+
+**Scoring logic crept into the browser.**
+- *Problem:* the History screen's "change since last check-in", built while UI work ran in parallel with the backend, computed the change in the browser with its own copy of the ±2% noise rule.
+- *Cause:* the rule that scoring stays on the server ([ADR-002](adr/002-pose-extraction-in-browser.md)) wasn't visible from the UI files, so a second copy looked harmless.
+- *Fix:* the API now returns `sinceLast` (scored by the same shared function as progress) and `noiseThreshold`; the browser copy was deleted, not just guarded by a test.
+- *Lesson:* when two copies of a rule exist, calibrating one silently breaks the other. Delete the copy.
+
+**Two work streams in one checkout.**
+- *Problem:* UI polish and the measuring step were being built at the same time in the same working copy.
+- *Fix:* claimed files before editing ("hold CheckIn.tsx until pushed"), reviewed the other stream's commits (tests, build, privacy, secrets) before building on them, and moved shared helpers into their own file so each stream owned different files.
+- *Lesson:* agree who owns which file before editing, and review before you build on someone else's work.
+
+**`.env.example` was invisible to Git.**
+- *Problem:* the template showing which settings the app needs couldn't be committed.
+- *Cause:* the `.env.*` ignore rule, meant for real secrets, also matched the example.
+- *Fix:* an exception line, `!.env.example`; the real `.env.local` stays ignored.
+
+**MediaPipe's console "errors" weren't errors.**
+- *Problem:* the browser console showed "Created TensorFlow Lite XNNPACK delegate for CPU" as an error.
+- *Cause:* MediaPipe logs this informational message at error level.
+- *Fix:* none needed; the models ran correctly. Worth knowing so real errors aren't missed among them.
 
 ### Design problems found by testing
 
