@@ -106,6 +106,12 @@ export function MeasureStep({ photo, onRetake }: { photo: HTMLCanvasElement; onR
           <p className={`mt-1 font-mono text-5xl font-medium ${measured.flagged ? 'text-warn' : 'text-signal'}`}>
             {measured.measurements.shoulderToWaist.toFixed(2)}
           </p>
+          {/* Local dev only: 3 decimals for noise calibration (dev/noise.py). */}
+          {import.meta.env.DEV && (
+            <p className="mt-1 font-mono text-xs text-graphite-500">
+              dev · {measured.measurements.shoulderToWaist.toFixed(3)}
+            </p>
+          )}
           {!measured.flagged && (
             <p className="mt-2 text-sm text-graphite-300">Save to add it to your history and see how it compares.</p>
           )}
