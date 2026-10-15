@@ -104,6 +104,7 @@ flowchart TB
         Layout["AppLayout<br/>signed-in guard"]
         HistoryS["History"]
         CheckIn["CheckIn"]
+        MeasureS["MeasureStep<br/>scan, result, Save"]
     end
 
     subgraph Capture["capture/"]
@@ -114,6 +115,7 @@ flowchart TB
     subgraph Measure["measure/"]
         Models["models.ts<br/>MediaPipe wrappers (browser only)"]
         Maths["maths.ts<br/>edges, ratio, checks (pure)"]
+        Rules["checkin.ts<br/>retake / flag / measured (pure)"]
     end
 
     subgraph HistoryM["history/"]
@@ -133,9 +135,12 @@ flowchart TB
     HistoryS --> Charts
     CheckIn --> Flow
     CheckIn --> Camera
-    CheckIn -. "step 3" .-> Models
-    Models -. "landmarks + mask rows" .-> Maths
-    CheckIn -. "Save" .-> Client
+    CheckIn --> MeasureS
+    CheckIn -- "preload on open" --> Models
+    MeasureS --> Models
+    MeasureS -- "landmarks + mask rows" --> Rules
+    Rules --> Maths
+    MeasureS -- "Save" --> Client
     Client --> Amplify
 ```
 
@@ -281,7 +286,7 @@ sequenceDiagram
 
 ## 9. Check-in capture states
 
-`flow.ts` as a state machine. The camera runs only in `opening`, `live` and `countdown`; leaving them, or the screen, turns it off.
+`flow.ts` as a state machine, with the measuring steps inside `ready` (`MeasureStep`). The camera runs only in `opening`, `live` and `countdown`; leaving them, or the screen, turns it off. The models start loading as soon as the screen opens.
 
 ```mermaid
 stateDiagram-v2
@@ -300,17 +305,20 @@ stateDiagram-v2
     review --> opening: Retake (camera)
     review --> setup: Retake (upload)
     review --> ready: Use photo
-    ready --> measuring: step 3
-    ready --> setup: restart
-
-    state measuring {
-        [*] --> planned
+    state ready {
+        [*] --> loading_models
+        loading_models --> finding_pose
+        finding_pose --> finding_outline
+        finding_outline --> measuring
+        measuring --> result
     }
+    ready --> setup: Retake
+    ready --> [*]: Save, then History
 ```
 
 ## 10. Measurement pipeline
 
-From photo to ratio, all on the device. Only the five pixel ingredients and the method version are sent.
+From photo to ratio, all on the device. Meaningless photos can only be retaken; a suspicious shoulder outline can be saved flagged. Only the five pixel ingredients and the method version are sent.
 
 ```mermaid
 flowchart LR
@@ -322,14 +330,14 @@ flowchart LR
     Rows --> Edges["Walk each mask row<br/>outward to the body edges"]
     Edges --> Widths["Shoulder edge width<br/>waist edge width"]
     Pts --> Joints["Shoulder joint width<br/>hip joint width<br/>torso length"]
+    Pose -- "nobody found" --> Retake["Retake only<br/>with a fix-it message"]
+    Pts -- "joint cut off or<br/>visibility < 0.5" --> Retake
+    Edges -- "outline not found" --> Retake
     Widths --> Check{"edge ÷ joint<br/>1.1 – 1.8?"}
     Joints --> Check
-    Widths --> Send["POST ingredients<br/>+ methodVersion"]
-    Joints --> Send
-    Check -. "step 3: show problem / retake" .-> Retake["Retake"]
-
-    class Retake planned
-    classDef planned stroke-dasharray: 5 5
+    Check -- "yes" --> Send["Save: POST ingredients<br/>+ methodVersion"]
+    Check -- "no" --> Flag["Save flagged or retake"]
+    Flag --> Send
 ```
 
 ## 11. Saving a measurement
