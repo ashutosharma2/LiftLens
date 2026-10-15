@@ -1,14 +1,13 @@
 # Next session — ONE task
 
-**M3 step 3 — Measure the photo**
-Run the pose and segmentation models on the check-in photo in the browser, turn the result into the measurement ingredients, and show the shoulder-to-waist result with an explicit Save that posts it to the API. A bad photo (nobody found, shoulders/hips missing, shoulderCheck flagged) shows what went wrong and offers a retake. Design first: what does the person see while the models load and run, and what counts as a photo too bad to save?
+**M3 step 3 — Test the measuring step with a real photo**
+The measuring step is built (69aa52f). Sign in to the local app, upload dev/fixtures/front2.png, and check the result is about 1.78–1.79 (the Python reference gives 1.785) with the shoulder and waist lines in the right places. Saving it is optional: it would be a second real check-in.
 
 Still open:
-- History UI polish is done (trend chart, change since last check-in, body map); continue with step 3 from here.
 - Change the Cognito password (it appeared in a screenshot during M2's smoke test).
-- Confirm models.ts works in a real browser and that the segmenter's person value is 0.
 - Confirm the camera light goes off as soon as the photo is taken.
 - Right after step 3, before M4: calibrate the noise threshold (BACKLOG) — ~5 front photos in one session, set NOISE_THRESHOLD to about 2× their spread, update docs/scoring.md. Every "no clear change" depends on it.
+- M4: host the MediaPipe runtime and model files on S3 + CloudFront (today they're copied into public/ for local dev only).
 
 Done when: a photo taken in the local app is measured and saved, and the new result appears on History.
 
