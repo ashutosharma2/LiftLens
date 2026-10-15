@@ -33,7 +33,7 @@ Solid boxes and arrows are built; dashed ones are planned. **[All 15 architectur
 ```mermaid
 flowchart LR
     subgraph Device["User's device (photo never leaves)"]
-        Photo[Photo] --> Models["models.ts<br/>MediaPipe pose + segmenter"]
+        Photo[Photo] --> Models["models.ts<br/>MediaPipe pose (joints + outline)"]
         Models --> Maths["maths.ts<br/>edges, ratio, checks"]
     end
 
@@ -85,6 +85,7 @@ The kill switch finds app resources by tag (`Project=LiftLens`, `Stack=app`), so
 | [004](docs/adr/004-scale-free-measurements.md) | Measurements are scale-free | Shoulders and waist are both measured edge to edge, and a photo shows shape, not size, so LiftLens reports ratios instead of centimetres |
 | [005](docs/adr/005-store-ingredients-recompute-scores.md) | Store measurement ingredients, recompute scores | Photos are gone after each check-in, so saving the raw numbers lets better formulas apply to the whole history |
 | [006](docs/adr/006-protected-data-stack.md) | Protected data stack, DynamoDB inside the free tier | `terraform destroy` on the app must never remove user data or accounts; provisioned capacity is guaranteed $0 and caps cost |
+| [007](docs/adr/007-pose-model-outline.md) | Body outline from the pose model; one baseline per method | The video-call segmenter measured furniture as the body in an ordinary room; different methods are different rulers, so scores never mix them |
 
 ## Repository layout
 

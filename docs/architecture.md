@@ -62,7 +62,7 @@ The deployable pieces and how they talk. Until CloudFront exists (M4), the local
 flowchart LR
     subgraph Device["User's device"]
         SPA["React app<br/>Vite, TypeScript, Tailwind"]
-        MP["MediaPipe in the browser<br/>pose + segmenter (WASM/WebGL)"]
+        MP["MediaPipe in the browser<br/>pose model: joints + outline (WASM/WebGL)"]
         SPA --> MP
     end
 
@@ -323,7 +323,7 @@ From photo to ratio, all on the device. Meaningless photos can only be retaken; 
 ```mermaid
 flowchart LR
     Photo["Photo (canvas)"] --> Pose["Pose landmarker<br/>33 landmarks"]
-    Photo --> Seg["Selfie segmenter<br/>person / background mask"]
+    Pose --> Seg["Its own mask<br/>person where ≥ 50% sure (ADR-007)"]
     Pose --> Pts["Shoulder + hip joints<br/>(pixels)"]
     Pts --> Rows["Shoulder line y<br/>waist y = 65% to hips<br/>torso centre x"]
     Seg --> Rows
@@ -367,17 +367,17 @@ sequenceDiagram
 
 ## 12. Scoring decisions
 
-How each stored item gets its score, recomputed on every read.
+How each stored item gets its score, recomputed on every read. Items are only ever compared with items of the same `methodVersion` ([ADR-007](adr/007-pose-model-outline.md)).
 
 ```mermaid
 flowchart TB
     Item["Stored item"] --> Ok{"shoulderCheck = ok?"}
     Ok -- "no" --> Flagged["flagged_result<br/>shown greyed, not scored"]
-    Ok -- "yes" --> First{"first ok item?"}
+    Ok -- "yes" --> First{"first ok item<br/>of its method?"}
     First -- "yes" --> Base["ratio_result<br/>'Your shoulders are 1.78× as wide as your waist.'"]
-    First -- "no" --> Prog["progress_result vs baseline"]
-    First -- "no" --> Since["since_previous_result vs previous ok item"]
-    Prog --> Noise{"|change| < 2%?"}
+    First -- "no" --> Prog["progress_result vs<br/>its method's baseline"]
+    First -- "no" --> Since["since_previous_result vs previous<br/>ok item of the same method"]
+    Prog --> Noise{"|change| < noise<br/>threshold?"}
     Since --> Noise
     Noise -- "yes" --> NC["no_clear_change"]
     Noise -- "no" --> Dir["increased / decreased"]
@@ -404,7 +404,7 @@ erDiagram
         number hipJointPx "ingredient"
         number torsoLengthPx "ingredient"
         string shoulderCheck "ok, too_wide, too_narrow"
-        string methodVersion "e.g. 2026-10-edge-v1"
+        string methodVersion "e.g. 2026-10-posemask-v1"
     }
 ```
 

@@ -35,13 +35,13 @@ DynamoDB table `liftlens-measurements`, provisioned at 5 reads and 5 writes per 
 | `hipJointPx` | number | | Distance between the hip joint landmarks |
 | `torsoLengthPx` | number | | Shoulder line to hip line |
 | `shoulderCheck` | string | | `ok`, `too_wide` or `too_narrow`, computed by the server |
-| `methodVersion` | string | | Which version of the measurement maths produced the numbers |
+| `methodVersion` | string | | Which measuring method (outline source plus maths) produced the numbers ([ADR-007](adr/007-pose-model-outline.md)) |
 
 Not stored: the photo (it never leaves the device), the user's email (Cognito has it), and scores (recomputed on every read, see [ADR-005](adr/005-store-ingredients-recompute-scores.md)).
 
 Pixel values are **never shown** to users: they depend on camera distance ([ADR-004](adr/004-scale-free-measurements.md)). They are stored as ingredients, so ratios and rulers invented later can be computed for old photos too.
 
-**Baseline:** the earliest item with `shoulderCheck = "ok"`, found by reading the user's items in order. A user adds about one item a week, so reading them all stays small.
+**Baseline:** each `methodVersion` has its own: the earliest item of that method with `shoulderCheck = "ok"`, found by reading the user's items in order. Different methods are different rulers, so scores never compare across them ([ADR-007](adr/007-pose-model-outline.md)). A user adds about one item a week, so reading them all stays small.
 
 ## `POST /api/measurements`
 
@@ -56,7 +56,7 @@ Saves one measurement and returns it with its score.
   "shoulderJointPx": 690,
   "hipJointPx": 364,
   "torsoLengthPx": 905,
-  "methodVersion": "2026-10-edge-v1"
+  "methodVersion": "2026-10-posemask-v1"
 }
 ```
 
@@ -67,7 +67,7 @@ Saves one measurement and returns it with its score.
 | Body larger than 2 KB | 413 |
 | Body isn't a JSON object, a field is missing, or an unknown field is present | 400 |
 | Any pixel value isn't a finite number between 1 and 10,000 | 400 |
-| `methodVersion` isn't a known version | 400 |
+| `methodVersion` isn't the current version (`2026-10-posemask-v1`); earlier methods stay readable but can't be added to | 400 |
 | `shoulderEdgePx ÷ waistEdgePx` is outside 0.8–3.0 | 400 |
 
 Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10000"}`.
@@ -79,7 +79,7 @@ Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10
 3. Compute `shoulderToWaist` and `shoulderCheck` (outer shoulder ÷ shoulder joints, plausible range 1.1–1.8).
 4. Stamp `timestamp` with the server's current UTC time.
 5. Save the item.
-6. Read the user's items, find the baseline, compute the score.
+6. Read the user's items, find the baseline of this item's method, compute the score.
 
 **Response `201`**
 
@@ -89,7 +89,7 @@ Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10
     "timestamp": "2026-10-10T09:30:00Z",
     "shoulderToWaist": 1.783,
     "shoulderCheck": "ok",
-    "methodVersion": "2026-10-edge-v1",
+    "methodVersion": "2026-10-posemask-v1",
     "isBaseline": false
   },
   "score": {
@@ -121,6 +121,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
 
 ```json
 {
+  "currentMethodVersion": "2026-10-posemask-v1",
   "baselineTimestamp": "2026-09-01T08:00:00Z",
   "noiseThreshold": 0.02,
   "measurements": [
@@ -128,7 +129,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
       "timestamp": "2026-09-01T08:00:00Z",
       "shoulderToWaist": 1.7,
       "shoulderCheck": "ok",
-      "methodVersion": "2026-10-edge-v1",
+      "methodVersion": "2026-10-posemask-v1",
       "isBaseline": true,
       "score": {"status": "baseline", "explanation": "Your shoulders are 1.70× as wide as your waist.", "...": "..."},
       "sinceLast": null
@@ -137,7 +138,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
       "timestamp": "2026-09-08T08:00:00Z",
       "shoulderToWaist": 2.1,
       "shoulderCheck": "too_wide",
-      "methodVersion": "2026-10-edge-v1",
+      "methodVersion": "2026-10-posemask-v1",
       "isBaseline": false,
       "score": {"status": "flagged", "explanation": "This photo was flagged (your arms may be in the shoulder outline), so it isn't used for progress.", "...": "..."},
       "sinceLast": null
@@ -146,18 +147,18 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
 }
 ```
 
-`baselineTimestamp` is `null` until there is an `ok` measurement. `noiseThreshold` is the server's noise band (0.02 = ±2%), so the app's chart always matches the score.
+`currentMethodVersion` is the method of the most recent item (`null` with no items); the app's trend shows only items of this method. `baselineTimestamp` is that method's baseline, `null` until it has an `ok` measurement. `isBaseline` is true for every method's baseline. `noiseThreshold` is the server's noise band (0.02 = ±2%), so the app's chart always matches the score.
 
-`sinceLast` is the change since the previous `ok` measurement (flagged ones are skipped), scored with the same rule as the main score. It's `null` for flagged items and for the first `ok` item. The app displays it; it never computes it.
+`sinceLast` is the change since the previous `ok` measurement of the same method (flagged ones are skipped), scored with the same rule as the main score. It's `null` for flagged items and for the first `ok` item of each method. The app displays it; it never computes it.
 
 ## Scores per item
 
 | Item | Score |
 |---|---|
 | Flagged (`shoulderCheck` isn't `ok`) | Status `flagged`, no percent change; shown greyed out |
-| The baseline | `ratio_result`, status `baseline` |
-| Any other `ok` item, after the baseline | `progress_result` against the baseline |
-| An `ok` item when no baseline exists yet | Can't happen: the first `ok` item is the baseline |
+| A method's baseline | `ratio_result`, status `baseline` |
+| Any other `ok` item | `progress_result` against the baseline of its own method |
+| An `ok` item when its method has no baseline yet | Can't happen: the first `ok` item of each method is its baseline |
 
 Formulas and wording are in [scoring.md](scoring.md).
 

@@ -6,7 +6,7 @@
 - **Obstacle:** a score needs a reference point; an "ideal body" target is unscientific and alienating, invented points hide the real number, and photo-to-photo noise can look like progress.
 - **Action:** score only the steady shoulder-to-waist ratio; show it as is on the first photo, then as a percent change against the user's own first photo; treat changes under ±2% as noise; return the formula, inputs and a one-sentence explanation with every result.
 - **Result:** every number can be checked by hand ((1.78 − 1.70) ÷ 1.70 = 4.7%); 20 tests cover rises, falls, noise, flagged photos and bad input.
-- **Troubleshooting:** the hip-normalised indexes were first expected to vary about 3% between photos but varied 11% on two same-session photos, so they were left out of the score; the ±2% noise threshold is a placeholder until it's calibrated (see below).
+- **Troubleshooting:** the hip-normalised indexes were first expected to vary about 3% between photos but varied 11% on two same-session photos, so they were left out of the score; the first calibration photos in a cluttered room measured furniture as part of the body, which led to a new outline method and one baseline per method ([ADR-007](adr/007-pose-model-outline.md)); the ±2% noise threshold is a placeholder until it's calibrated on that method (see below).
 
 The rest of this document is the reference specification.
 
@@ -18,18 +18,18 @@ One number: the **shoulder-to-waist ratio**, with both widths measured edge to e
 
 Why only this one:
 
-- **It was the only steady number.** Two photos of the same person in the same session gave 1.784 and 1.785. The hip-normalised indexes differed by 11% on the same photos, so they aren't reliable enough to score yet.
+- **It was the steadiest number.** The hip-normalised indexes differed by 11% between two photos of the same person, so they aren't reliable enough to score yet. (Those two photos first gave 1.784 and 1.785; that match later turned out to be a coincidence, see [ADR-007](adr/007-pose-model-outline.md).)
 - **It's the number lifters already track.** Shoulder-to-waist is the standard measure of a V-taper.
 
-LiftLens tracks this number; it does not judge it against an "ideal" value such as 1.618. Scores compare a user only with their own first photo.
+LiftLens tracks this number; it does not judge it against an "ideal" value such as 1.618. Scores compare a user only with their own first photo, and only with photos measured by the same method: each `methodVersion` has its own baseline ([ADR-007](adr/007-pose-model-outline.md)).
 
 ## The two results
 
 | Shown from | Result | Formula |
 |---|---|---|
 | First photo | `ratio_result` | `shoulder_width / waist_width` |
-| Second photo on | `progress_result` | `(current - baseline) / baseline × 100`, where `baseline` is the first photo's ratio |
-| Every `ok` photo after the first | `since_previous_result` | `(current - previous) / previous × 100`, where `previous` is the last `ok` photo before it; shown as "since last check-in" |
+| Second photo on | `progress_result` | `(current - baseline) / baseline × 100`, where `baseline` is the ratio of the first `ok` photo measured with the same method |
+| Every `ok` photo after the first | `since_previous_result` | `(current - previous) / previous × 100`, where `previous` is the last `ok` photo of the same method before it; shown as "since last check-in" |
 | Flagged photo (shoulder check failed) | `flagged_result` | Not scored; shown greyed out and never used as the baseline |
 
 Every result returns:

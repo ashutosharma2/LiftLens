@@ -88,9 +88,16 @@ My first instinct was to run the pose model in a Lambda. When I weighed it prope
 - Turned photo quality into one rule: **retake what's meaningless, flag what's suspicious.** Nobody found, a joint cut off or unclear, or no outline means the numbers would be meaningless, so only a retake is offered; arms in the shoulder outline give real but doubtful numbers, which can be saved flagged.
 - Kept **all scoring on the server**: when "change since last check-in" was first built in the browser with its own copy of the noise rule, it moved into the API.
 
-### 9. Documented as I went
+### 9. Made measuring survive an ordinary room
 
-Six ADRs, an API contract, a scoring document, 15 architecture diagrams that mark what's built and what's planned, and a README.
+- Started calibrating the noise threshold by deciding the method first: **10 repeat photos**, re-standing and re-propping the phone between each, threshold = **2 × the standard deviation of the gap between two photos**, chosen before seeing any numbers. A calculator script makes the maths repeatable.
+- The first photos, taken in a lived-in bedroom, gave impossible ratios. **Drawing the mask over the photo** showed the outline model painting a chair, dark bedding and my arms as part of me.
+- Compared outline models on the same photos and **switched to the pose model's own outline**, which fixed every failure, removed a model download and is calibrated before it ships ([ADR-007](adr/007-pose-model-outline.md)).
+- Because stored measurements can't be re-measured, made **one baseline per measuring method**: scores never compare two rulers, old check-ins stay in the record, labelled.
+
+### 10. Documented as I went
+
+Seven ADRs, an API contract, a scoring document, 15 architecture diagrams that mark what's built and what's planned, and a README.
 
 ## R: Results
 
@@ -98,12 +105,12 @@ Six ADRs, an API contract, a scoring document, 15 architecture diagrams that mar
 - **Photos never leave the device.** There are no stored images to secure, leak or delete, and no container image costs.
 - **Measurements you can trust and check:**
   - The TypeScript engine matches the Python reference within 1% on real photos.
-  - Two photos of the same body gave shoulder-to-waist ratios of **1.784 and 1.785**.
+  - A new outline method turned impossible readings in a cluttered room (0.64–1.08) into plausible ones (1.61–1.90), and each method keeps its own baseline so a method change never shows up as fake progress.
   - Every score shows its formula, its inputs and a one-sentence explanation.
 - **Tested:** 73 TypeScript tests and 96 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
 - **Live backend:** a stranger can sign up with a verified email, save a measurement and read their history. The stored item holds exactly the ten designed fields: no photo, no email, no score. After the first (cold) request of about 1.5–2 seconds, requests take 1–19 ms.
 - **The whole chain works in a real browser:** the same photo measured 1.785 in the Python reference and 1.78 in the browser. A second check-in from the same session was correctly reported as "no clear change", and the camera light goes off as soon as the photo is taken.
-- **Decisions on record:** six ADRs, each with the alternatives I rejected and why.
+- **Decisions on record:** seven ADRs, each with the alternatives I rejected and why.
 
 ## T: Troubleshooting
 
@@ -238,3 +245,15 @@ Each entry gives the problem, its root cause, the fix, and what I took away from
 - *Cause:* two photos of the same body in the same session gave indexes 11% apart, while the shoulder-to-waist ratio barely moved.
 - *Fix:* recorded the real figure, kept the score on the steady ratio, stored raw per-photo values so a better ruler can be applied to past photos, and added a calibration task.
 - *Lesson:* measure noise before trusting small changes.
+
+**Furniture was measured as part of the body.**
+- *Problem:* the first calibration photos read 0.74, 1.06 and 0.80, against 1.78 in front of a plain wall.
+- *Cause:* drawing the person mask over the photo showed the selfie segmenter, built for close-up video calls, merging a black chair, dark bedding and the arms into the body. Guessing (arms, distance, angle) had fixed only part of it.
+- *Fix:* the outline now comes from the pose model's own mask, which separated the person in every failing photo; scores compare only check-ins of the same method ([ADR-007](adr/007-pose-model-outline.md)).
+- *Lesson:* when a number is wrong, look at what the model saw before changing anything.
+
+**A perfect match was a coincidence.**
+- *Problem:* two reference photos had agreed at 1.784 and 1.785, and that agreement was quoted as proof the ratio was steady. Under the new outline they read 1.893 and 1.745.
+- *Cause:* zooming into the first photo's waist showed the old outline had filled the gap between forearm and waist, adding 35 px. The two photos also use different poses (hands on hips vs arms hanging), so they should never have been expected to match.
+- *Fix:* corrected the claim in the scoring doc and here; repeat photos for calibration use one pose.
+- *Lesson:* agreement between two numbers isn't evidence until you've checked each one is right.

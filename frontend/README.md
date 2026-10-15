@@ -11,5 +11,5 @@ npm run build   # type-check and production build
 
 `src/measure/` holds the measurement engine:
 
-- `models.ts` wraps the MediaPipe pose landmarker and selfie segmenter (browser only).
+- `models.ts` wraps the MediaPipe pose landmarker, which returns the joints and the body outline (browser only, [ADR-007](../docs/adr/007-pose-model-outline.md)).
 - `maths.ts` is pure functions on landmarks and mask rows, unit-tested without any model.
