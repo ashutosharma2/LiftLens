@@ -28,6 +28,9 @@ export interface HistoryItem extends Measurement {
 }
 
 export interface History {
+  /** Method of the most recent check-in; scores only compare check-ins of one method (ADR-007). */
+  currentMethodVersion: string | null
+  /** Baseline of the current method. */
   baselineTimestamp: string | null
   /** The server's noise threshold as a fraction (0.02 = ±2%). */
   noiseThreshold: number

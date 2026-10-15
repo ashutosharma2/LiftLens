@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HistoryItem, Score, ScoreStatus } from '../api/client'
-import { changeHeadline, formatPercent, latestSinceLast, scoredItems } from './trend'
+import { changeHeadline, currentMethodItems, formatPercent, latestSinceLast, scoredItems } from './trend'
 
 const score = (status: ScoreStatus, value = 0): Score => ({ name: 'x', value, status, formula: '', inputs: {}, explanation: '' })
 
@@ -15,6 +15,15 @@ function item(day: number, ratio: number, status: ScoreStatus = 'no_clear_change
     sinceLast,
   }
 }
+
+describe('currentMethodItems', () => {
+  it('keeps only check-ins measured with the current method', () => {
+    const old = { ...item(1, 1.78, 'baseline'), methodVersion: 'old' }
+    const now = { ...item(15, 1.75, 'baseline'), methodVersion: 'new' }
+    const history = { currentMethodVersion: 'new', baselineTimestamp: now.timestamp, noiseThreshold: 0.02, measurements: [old, now] }
+    expect(currentMethodItems(history)).toEqual([now])
+  })
+})
 
 describe('scoredItems', () => {
   it('drops flagged check-ins and keeps order', () => {

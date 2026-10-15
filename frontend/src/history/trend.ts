@@ -1,6 +1,14 @@
 // Display helpers for the History screen. All scoring (percent changes, the
 // noise rule) happens on the server; these only select and format its results.
-import type { HistoryItem, Score } from '../api/client'
+import type { History, HistoryItem, Score } from '../api/client'
+
+/**
+ * Check-ins measured with the current method. Earlier methods are different
+ * rulers, so they stay in the list but out of trends (ADR-007).
+ */
+export function currentMethodItems(history: History): HistoryItem[] {
+  return history.measurements.filter((item) => item.methodVersion === history.currentMethodVersion)
+}
 
 /** Check-ins that count for trends: everything except flagged photos, oldest first. */
 export function scoredItems(measurements: HistoryItem[]): HistoryItem[] {

@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router'
 import { getHistory, SignedOutError, type History as HistoryData, type HistoryItem } from '../api/client'
 import { apiDeps } from '../auth/session'
 import { BodyMap } from '../history/BodyMap'
-import { changeHeadline, latestSinceLast, scoredItems } from '../history/trend'
+import { changeHeadline, currentMethodItems, latestSinceLast, scoredItems } from '../history/trend'
 import { Sparkline } from '../history/Sparkline'
 import { TrendChart } from '../history/TrendChart'
 import { Button, Notice, Viewfinder } from '../ui/kit'
@@ -26,10 +26,10 @@ function shortDate(timestamp: string): string {
   return new Date(timestamp).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
-function Row({ item }: { item: HistoryItem }) {
+function Row({ item, earlierMethod }: { item: HistoryItem; earlierMethod: boolean }) {
   const flagged = item.score.status === 'flagged'
   return (
-    <li className={`border-b border-graphite-800 py-5 last:border-b-0 ${flagged ? 'opacity-50' : ''}`}>
+    <li className={`border-b border-graphite-800 py-5 last:border-b-0 ${flagged || earlierMethod ? 'opacity-50' : ''}`}>
       <div className="flex items-center justify-between gap-4">
         <span className="text-sm text-graphite-300">{formatDate(item.timestamp)}</span>
         <span className="rounded-full border border-graphite-700 px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-wider text-graphite-300">
@@ -38,6 +38,9 @@ function Row({ item }: { item: HistoryItem }) {
       </div>
       <p className="mt-2 font-mono text-2xl font-medium">{item.shoulderToWaist.toFixed(2)}</p>
       <p className="mt-1 text-sm leading-relaxed text-graphite-300">{item.score.explanation}</p>
+      {earlierMethod && (
+        <p className="mt-1 text-xs text-graphite-500">Earlier measuring method, so not compared with newer check-ins.</p>
+      )}
     </li>
   )
 }
@@ -66,12 +69,14 @@ export function History() {
   }, [navigate])
 
   const latest = data?.measurements.at(-1)
-  const scored = data ? scoredItems(data.measurements) : []
-  const since = data ? latestSinceLast(data.measurements) : null
+  // Trends use only the current measuring method: earlier methods are different rulers.
+  const current = data ? currentMethodItems(data) : []
+  const scored = scoredItems(current)
+  const since = latestSinceLast(current)
   // The ok check-in before the latest one, for the date range only; the change itself comes from the server.
   const previous = since ? scored[scored.indexOf(since.item) - 1] : undefined
   const noiseLabel = data ? `±${+(data.noiseThreshold * 100).toFixed(1)}%` : ''
-  const baseline = data?.measurements.find((m) => m.isBaseline)?.shoulderToWaist ?? scored[0]?.shoulderToWaist
+  const baseline = current.find((m) => m.isBaseline)?.shoulderToWaist ?? scored[0]?.shoulderToWaist
   const count = data?.measurements.length ?? 0
   // Facts straight from the stored data: when the baseline was set, how many check-ins, and the latest one.
   const facts = [
@@ -167,7 +172,7 @@ export function History() {
         {data && data.measurements.length > 0 && (
           <ul className="mt-2">
             {[...data.measurements].reverse().map((item) => (
-              <Row key={item.timestamp} item={item} />
+              <Row key={item.timestamp} item={item} earlierMethod={item.methodVersion !== data.currentMethodVersion} />
             ))}
           </ul>
         )}
