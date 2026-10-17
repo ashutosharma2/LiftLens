@@ -18,7 +18,8 @@ const INGREDIENTS = {
   shoulderJointPx: 690,
   hipJointPx: 364,
   torsoLengthPx: 905,
-  methodVersion: '2026-10-edge-v1',
+  armAngleDeg: 20,
+  methodVersion: '2026-10-posemask-v2',
 }
 
 describe('API client', () => {

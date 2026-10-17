@@ -12,6 +12,7 @@ Outputs stay in dev/fixtures/, which is gitignored.
 """
 
 import json
+import math
 from pathlib import Path
 
 import cv2
@@ -24,7 +25,7 @@ POSE_MODEL = "dev/pose_landmarker_lite.task"
 MAX_PHOTO_SIDE = 2048  # same as MAX_PHOTO_SIDE in frontend/src/capture/photo.ts
 PERSON_VALUE = 1  # mask rows hold 1 where the pose model sees the person
 PERSON_CONFIDENCE = 0.5  # same as PERSON_CONFIDENCE in frontend/src/measure/models.ts
-LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_HIP, RIGHT_HIP = 11, 12, 23, 24
+LEFT_SHOULDER, RIGHT_SHOULDER, LEFT_ELBOW, RIGHT_ELBOW, LEFT_HIP, RIGHT_HIP = 11, 12, 13, 14, 23, 24
 WAIST_FRACTION = 0.65
 
 
@@ -34,6 +35,11 @@ def to_px(lm, w, h):
 
 def distance(p1, p2):
     return ((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2) ** 0.5
+
+
+def upper_arm_angle_deg(shoulder, elbow):
+    """Angle of the upper arm from straight down, in degrees."""
+    return abs(math.degrees(math.atan2(elbow[0] - shoulder[0], elbow[1] - shoulder[1])))
 
 
 def walk_edges(row, center_x):
@@ -74,6 +80,10 @@ def export(image_path, landmarker):
     rh = to_px(landmarks[RIGHT_HIP], w, h)
     shoulder_joint_width = distance(ls, rs)
     hip_width = distance(lh, rh)
+    arm_angle = (
+        upper_arm_angle_deg(ls, to_px(landmarks[LEFT_ELBOW], w, h))
+        + upper_arm_angle_deg(rs, to_px(landmarks[RIGHT_ELBOW], w, h))
+    ) / 2
     torso_length = distance(((ls[0] + rs[0]) / 2, (ls[1] + rs[1]) / 2), ((lh[0] + rh[0]) / 2, (lh[1] + rh[1]) / 2))
 
     # The pose model's confidence mask, (h, w) or (h, w, 1); thresholded into person / not.
@@ -117,6 +127,7 @@ def export(image_path, landmarker):
             "shoulder_index": shoulder_width / hip_width,
             "waist_index": waist_width / hip_width,
             "torso_length_px": torso_length,
+            "arm_angle_deg": arm_angle,
         },
     }
     out_path = FIXTURES / f"{image_path.stem}.parity.json"

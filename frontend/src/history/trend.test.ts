@@ -20,7 +20,7 @@ describe('currentMethodItems', () => {
   it('keeps only check-ins measured with the current method', () => {
     const old = { ...item(1, 1.78, 'baseline'), methodVersion: 'old' }
     const now = { ...item(15, 1.75, 'baseline'), methodVersion: 'new' }
-    const history = { currentMethodVersion: 'new', baselineTimestamp: now.timestamp, noiseThreshold: 0.02, measurements: [old, now] }
+    const history = { currentMethodVersion: 'new', baselineTimestamp: now.timestamp, baselineArmAngleDeg: 20, noiseThreshold: 0.024, measurements: [old, now] }
     expect(currentMethodItems(history)).toEqual([now])
   })
 })

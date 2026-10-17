@@ -30,6 +30,7 @@ interface ParityFixture {
     shoulder_index: number;
     waist_index: number;
     torso_length_px: number;
+    arm_angle_deg: number;
   };
 }
 
@@ -76,6 +77,7 @@ describe.skipIf(files.length === 0)("parity with the Python reference", () => {
       expectWithin(result.shoulderIndex, py.shoulder_index);
       expectWithin(result.waistIndex, py.waist_index);
       expectWithin(result.torsoLengthPx, py.torso_length_px);
+      expectWithin(result.armAngleDeg, py.arm_angle_deg);
     });
   }
 });

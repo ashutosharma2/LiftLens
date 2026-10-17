@@ -18,6 +18,10 @@ export interface Point {
 export const LANDMARK = {
   LEFT_SHOULDER: 11,
   RIGHT_SHOULDER: 12,
+  LEFT_ELBOW: 13,
+  RIGHT_ELBOW: 14,
+  LEFT_WRIST: 15,
+  RIGHT_WRIST: 16,
   LEFT_HIP: 23,
   RIGHT_HIP: 24,
 } as const;
@@ -41,7 +45,7 @@ export type ShoulderCheck = "ok" | "too_wide" | "too_narrow";
  * of the same version (ADR-005, ADR-007). Must be the one the API accepts
  * (KNOWN_METHOD_VERSIONS in backend/api/validation.py).
  */
-export const METHOD_VERSION = "2026-10-posemask-v1";
+export const METHOD_VERSION = "2026-10-posemask-v2";
 
 /** A joint counts as seen when MediaPipe's visibility score is at least this. */
 export const MIN_VISIBILITY = 0.5;
@@ -50,6 +54,8 @@ export const MIN_VISIBILITY = 0.5;
 export const REQUIRED_JOINTS = [
   { index: 11, part: "shoulders" },
   { index: 12, part: "shoulders" },
+  { index: 13, part: "arms" },
+  { index: 14, part: "arms" },
   { index: 23, part: "hips" },
   { index: 24, part: "hips" },
 ] as const;
@@ -95,6 +101,8 @@ export interface FrontMeasurements {
   waistIndex: number;
   /** Shoulder midpoint to hip midpoint: a bone length, stored for future rulers. */
   torsoLengthPx: number;
+  /** Upper arms' angle from straight down, averaged over both arms (degrees). */
+  armAngleDeg: number;
 }
 
 export function toPx(landmark: Landmark, width: number, height: number): Point {
@@ -244,5 +252,76 @@ export function measureFront(
     shoulderIndex: shoulderWidthPx / hipWidthPx,
     waistIndex: waistWidthPx / hipWidthPx,
     torsoLengthPx: distance(midpoint(points.leftShoulder, points.rightShoulder), midpoint(points.leftHip, points.rightHip)),
+    armAngleDeg: upperArmAngleDeg(landmarks, width, height),
   };
+}
+
+// ---- Photo checks (ADR-008). Thresholds come from real photos; see the ADR. ----
+
+/** Below this share of the photo's width, the person is too far away to find reliably. */
+export const MIN_SHOULDER_SHARE = 0.15;
+
+/**
+ * A wrist or elbow counts for the arms-touching check only between these
+ * fractions of the way from the shoulder line (0) to the hip line (1): around
+ * the waist row, but not hands hanging at the hips or below.
+ */
+export const TOUCH_HEIGHT_MIN = 0.4;
+export const TOUCH_HEIGHT_MAX = 0.9;
+
+/** A joint closer than this (as a share of shoulder width) outside a waist edge, or inside it, touches the waist. */
+export const TOUCH_GAP = 0.1;
+
+/** A photo wider than it is tall: the phone was held sideways. */
+export function isSideways(width: number, height: number): boolean {
+  return width > height;
+}
+
+/**
+ * Facing away from the camera. Seen from the front, a person's left shoulder
+ * is on the image's right; from behind it's on the left. Mirror photos look
+ * like a person facing the camera, so they count as front.
+ */
+export function isBackView(landmarks: Landmark[]): boolean {
+  const left = landmarks[LANDMARK.LEFT_SHOULDER];
+  const right = landmarks[LANDMARK.RIGHT_SHOULDER];
+  return !!left && !!right && left.x < right.x;
+}
+
+/** Outer shoulder width as a share of the photo's width. */
+export function shoulderShare(m: FrontMeasurements, width: number): number {
+  return m.shoulderWidthPx / width;
+}
+
+/** Upper arms' angle from straight down (shoulder to elbow), averaged over both arms, in degrees. */
+export function upperArmAngleDeg(landmarks: Landmark[], width: number, height: number): number {
+  const angle = (shoulder: number, elbow: number) => {
+    const s = toPx(landmarks[shoulder], width, height);
+    const e = toPx(landmarks[elbow], width, height);
+    return Math.abs((Math.atan2(e.x - s.x, e.y - s.y) * 180) / Math.PI);
+  };
+  return (angle(LANDMARK.LEFT_SHOULDER, LANDMARK.LEFT_ELBOW) + angle(LANDMARK.RIGHT_SHOULDER, LANDMARK.RIGHT_ELBOW)) / 2;
+}
+
+/**
+ * Whether a wrist or elbow touches the waist: at waist height, and inside a
+ * waist edge or within TOUCH_GAP of it. Then the outline runs on into the arm,
+ * so the waist width would be meaningless. Unseen or out-of-frame joints are ignored.
+ */
+export function armsTouchingWaist(landmarks: Landmark[], width: number, m: FrontMeasurements): boolean {
+  const shoulderY = (landmarks[LANDMARK.LEFT_SHOULDER].y + landmarks[LANDMARK.RIGHT_SHOULDER].y) / 2;
+  const hipY = (landmarks[LANDMARK.LEFT_HIP].y + landmarks[LANDMARK.RIGHT_HIP].y) / 2;
+  const centerX = (m.waistEdges.left + m.waistEdges.right) / 2;
+  const joints = [LANDMARK.LEFT_ELBOW, LANDMARK.RIGHT_ELBOW, LANDMARK.LEFT_WRIST, LANDMARK.RIGHT_WRIST];
+  return joints.some((index) => {
+    const joint = landmarks[index];
+    if (!joint || (joint.visibility ?? 1) < MIN_VISIBILITY || joint.x < 0 || joint.x > 1 || joint.y < 0 || joint.y > 1) {
+      return false;
+    }
+    const along = (joint.y - shoulderY) / (hipY - shoulderY);
+    if (along < TOUCH_HEIGHT_MIN || along > TOUCH_HEIGHT_MAX) return false;
+    const x = joint.x * width;
+    const outward = x < centerX ? m.waistEdges.left - x : x - m.waistEdges.right;
+    return outward <= TOUCH_GAP * m.shoulderWidthPx;
+  });
 }

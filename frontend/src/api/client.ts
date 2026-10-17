@@ -32,6 +32,8 @@ export interface History {
   currentMethodVersion: string | null
   /** Baseline of the current method. */
   baselineTimestamp: string | null
+  /** Arm angle of the current method's baseline photo; new photos must match it (ADR-008). */
+  baselineArmAngleDeg: number | null
   /** The server's noise threshold as a fraction (0.02 = ±2%). */
   noiseThreshold: number
   measurements: HistoryItem[]
@@ -43,6 +45,8 @@ export interface Ingredients {
   shoulderJointPx: number
   hipJointPx: number
   torsoLengthPx: number
+  /** Upper arms' angle from straight down, in degrees: the pose, matched against the baseline (ADR-008). */
+  armAngleDeg: number
   methodVersion: string
 }
 

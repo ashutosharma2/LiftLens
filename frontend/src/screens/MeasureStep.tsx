@@ -1,7 +1,7 @@
 import { signOut } from 'aws-amplify/auth'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { saveMeasurement, SignedOutError } from '../api/client'
+import { getHistory, saveMeasurement, SignedOutError } from '../api/client'
 import { apiDeps } from '../auth/session'
 import { FULL_HEIGHT, PhotoView, Stage } from '../capture/Stage'
 import { assess, outcomeMessage, type Outcome } from '../measure/checkin'
@@ -39,6 +39,13 @@ export function MeasureStep({ photo, onRetake }: { photo: HTMLCanvasElement; onR
     let cancelled = false
     const show = (step: Step) => !cancelled && setState({ kind: 'working', step })
 
+    // The baseline photo's arm angle, for the pose check. If History can't be
+    // read, fall back to the first-photo range rather than block measuring;
+    // a signed-out user is sent to sign in when they save.
+    const baselineArmAngle = getHistory(apiDeps)
+      .then((history) => history.baselineArmAngleDeg ?? null)
+      .catch(() => null)
+
     ;(async () => {
       try {
         const models = await preloadModels()
@@ -47,9 +54,10 @@ export function MeasureStep({ photo, onRetake }: { photo: HTMLCanvasElement; onR
         const person = detectPerson(models, photo)
         show('measuring')
         await nextFrame()
+        const reference = await baselineArmAngle
         const outcome = person
-          ? assess(person.landmarks, photo.width, photo.height, person.maskRowAt, PERSON_VALUE)
-          : assess(null, photo.width, photo.height, () => new Uint8Array(0), PERSON_VALUE)
+          ? assess(person.landmarks, photo.width, photo.height, person.maskRowAt, PERSON_VALUE, reference)
+          : assess(null, photo.width, photo.height, () => new Uint8Array(0), PERSON_VALUE, reference)
         if (!cancelled) setState({ kind: 'done', outcome })
       } catch {
         if (!cancelled) {
@@ -104,10 +112,10 @@ export function MeasureStep({ photo, onRetake }: { photo: HTMLCanvasElement; onR
           <p className={`mt-1 font-mono text-5xl font-medium ${measured.flagged ? 'text-warn' : 'text-signal'}`}>
             {measured.measurements.shoulderToWaist.toFixed(2)}
           </p>
-          {/* Local dev only: 3 decimals for noise calibration (dev/noise.py). */}
+          {/* Local dev only: 3 decimals and the arm angle, for calibrating noise and pose tolerance (dev/noise.py). */}
           {import.meta.env.DEV && (
             <p className="mt-1 font-mono text-xs text-graphite-500">
-              dev · {measured.measurements.shoulderToWaist.toFixed(3)}
+              dev · {measured.measurements.shoulderToWaist.toFixed(3)} · arms {measured.measurements.armAngleDeg.toFixed(1)}°
             </p>
           )}
           {!measured.flagged && (

@@ -10,6 +10,9 @@ import {
   toPx,
   torsoCenterX,
   torsoPoints,
+  upperArmAngleDeg,
+  isBackView,
+  isSideways,
   waistRowY,
 } from "./maths";
 
@@ -197,5 +200,30 @@ describe("torso length", () => {
     const result = measureFront(BODY, 100, 200, (y) => rows[y] ?? span(0, -1), P);
     // shoulders midpoint (50, 40), hips midpoint (50, 140)
     expect(result.torsoLengthPx).toBeCloseTo(100);
+  });
+});
+
+describe("photo checks", () => {
+  it("calls a photo wider than tall sideways", () => {
+    expect(isSideways(4032, 3024)).toBe(true);
+    expect(isSideways(1536, 2048)).toBe(false);
+  });
+
+  it("reads a left shoulder on the image's left as a back view", () => {
+    expect(isBackView(BODY)).toBe(false); // left shoulder at x=0.7
+    const back = landmarksWith({ [LANDMARK.LEFT_SHOULDER]: { x: 0.3, y: 0.2 }, [LANDMARK.RIGHT_SHOULDER]: { x: 0.7, y: 0.2 } });
+    expect(isBackView(back)).toBe(true);
+  });
+
+  it("measures upper arms from straight down: 0° hanging, 45° halfway to level", () => {
+    const arms = (dx: number, dy: number) =>
+      landmarksWith({
+        [LANDMARK.LEFT_SHOULDER]: { x: 0.7, y: 0.2 },
+        [LANDMARK.RIGHT_SHOULDER]: { x: 0.3, y: 0.2 },
+        [LANDMARK.LEFT_ELBOW]: { x: 0.7 + dx, y: 0.2 + dy },
+        [LANDMARK.RIGHT_ELBOW]: { x: 0.3 - dx, y: 0.2 + dy },
+      });
+    expect(upperArmAngleDeg(arms(0, 0.2), 100, 100)).toBeCloseTo(0);
+    expect(upperArmAngleDeg(arms(0.2, 0.2), 100, 100)).toBeCloseTo(45);
   });
 });
