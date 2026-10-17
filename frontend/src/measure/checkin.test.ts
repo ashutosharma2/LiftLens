@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assess, FIRST_ARM_ANGLE_MAX, outcomeMessage, POSE_TOLERANCE_DEG, toIngredients } from "./checkin";
+import { assess, FIRST_ARM_ANGLE_MAX, formatDegrees, outcomeMessage, POSE_TOLERANCE_DEG, toIngredients } from "./checkin";
 import { LANDMARK, METHOD_VERSION, type Landmark } from "./maths";
 
 const P = 0; // person
@@ -139,7 +139,7 @@ describe("assess: catch-and-guide checks (ADR-008)", () => {
     const off = assess(body(), 100, 200, goodRows, P, 30);
     expect(off).toEqual({ kind: "pose", armAngleDeg: expect.closeTo(19.8, 1), baselineArmAngleDeg: 30 });
     expect(outcomeMessage(off)).toBe(
-      "Your arms are at 20°; in your baseline photo they were at 30°. Hold them a little further out and retake, so the photos compare.",
+      "Your arms are at 19.8°; in your baseline photo they were at 30°. Hold them a little further out and retake, so the photos compare.",
     );
   });
 });
@@ -168,5 +168,12 @@ describe("outcomeMessage", () => {
     expect(outcomeMessage(good)).toBeNull();
     const flagged = assess(body(), 100, 200, (y) => (y === 40 ? span(0, 99) : goodRows(y)), P);
     expect(outcomeMessage(flagged)).toMatch(/save it flagged/);
+  });
+});
+
+describe("formatDegrees", () => {
+  it("never rounds an angle onto a limit it failed", () => {
+    expect(formatDegrees(9.6)).toBe("9.6°");
+    expect(formatDegrees(30)).toBe("30°");
   });
 });

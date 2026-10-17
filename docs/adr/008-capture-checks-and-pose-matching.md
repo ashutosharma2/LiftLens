@@ -24,7 +24,7 @@ With the pose model's outline ([ADR-007](007-pose-model-outline.md)) and a calib
 | Too far | Shoulder width as a share of the photo width | Under 15% | Shrinking a good photo showed no drift down to 14%; detection failed at 11% |
 | Hand at the shoulder | Wrists from 0.4 above to 0.35 below the shoulder line | Inside, or within 10% of shoulder width outside, a shoulder edge | A mirror selfie's phone hand sat at −0.05 and read 1.99 (about 1.8 normally); every relaxed wrist in 11 photos was at +0.59 or lower |
 | Arms touching | Wrists and elbows at 40–90% of the way from shoulders to hips | Within 10% of shoulder width outside a waist edge, or inside it | Hands on hips: −8% and −14%. Arms clear: 22–75% |
-| Pose | Upper-arm angle (shoulder → elbow, from straight down), averaged over both arms | Within ±2° of the baseline photo's angle; 10–35° before a baseline exists | Same room and day: 21.3° read 1.93 and about 17° read 1.83, about 1.3% per degree |
+| Pose | Upper-arm angle (shoulder → elbow, from straight down), averaged over both arms | Within ±2° of the baseline photo's angle; 5–35° before a baseline exists (relaxed arms measured 7.7–11.7°) | Same room and day: 21.3° read 1.93 and about 17° read 1.83, about 1.3% per degree |
 
 **The pose is matched against the user's own baseline, not a fixed range,** so LiftLens keeps comparing a user only with themselves. The arm angle is stored with every check-in, and the API returns the baseline's angle. This made the arm angle part of the method: version `2026-10-posemask-v2`, so the score baseline and the pose reference are always the same photo.
 

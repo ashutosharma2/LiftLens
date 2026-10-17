@@ -26,8 +26,12 @@ import {
  */
 export const POSE_TOLERANCE_DEG = 2;
 
-/** Arm angles accepted when there's no baseline yet: they measured sensibly in real photos; 35° broke the ratio. */
-export const FIRST_ARM_ANGLE_MIN = 10;
+/**
+ * Arm angles accepted when there's no baseline yet. Relaxed arms measured
+ * 7.7–11.7° across 11 repeat photos, so the minimum only rules out arms held
+ * flat to the body (also caught by the touching check); 35° broke the ratio.
+ */
+export const FIRST_ARM_ANGLE_MIN = 5;
 export const FIRST_ARM_ANGLE_MAX = 35;
 
 export type Outcome =
@@ -102,6 +106,11 @@ export function toIngredients(m: FrontMeasurements): Ingredients {
   };
 }
 
+/** An angle for messages: one decimal, so 9.6° is never shown as 10° next to a 10° limit. */
+export function formatDegrees(angle: number): string {
+  return `${angle.toFixed(1).replace(/\.0$/, "")}°`;
+}
+
 /** What to tell the person, in plain words, for each outcome that needs one. */
 export function outcomeMessage(outcome: Outcome): string | null {
   switch (outcome.kind) {
@@ -116,13 +125,13 @@ export function outcomeMessage(outcome: Outcome): string | null {
     case "arms-touching":
       return "Your arms or hands are touching your waist, so it can't be measured. Hold your arms slightly away from your body and retake.";
     case "pose": {
-      const now = Math.round(outcome.armAngleDeg);
+      const now = formatDegrees(outcome.armAngleDeg);
       if (outcome.baselineArmAngleDeg === null) {
-        return `Your arms are at ${now}° from your body. Hold them slightly out, between ${FIRST_ARM_ANGLE_MIN}° and ${FIRST_ARM_ANGLE_MAX}°, and retake. This pose becomes your baseline.`;
+        return `Your arms are at ${now} from your body. Hold them slightly out, between ${FIRST_ARM_ANGLE_MIN}° and ${FIRST_ARM_ANGLE_MAX}°, and retake. This pose becomes your baseline.`;
       }
-      const then = Math.round(outcome.baselineArmAngleDeg);
+      const then = formatDegrees(outcome.baselineArmAngleDeg);
       const way = outcome.armAngleDeg > outcome.baselineArmAngleDeg ? "closer to your body" : "a little further out";
-      return `Your arms are at ${now}°; in your baseline photo they were at ${then}°. Hold them ${way} and retake, so the photos compare.`;
+      return `Your arms are at ${now}; in your baseline photo they were at ${then}. Hold them ${way} and retake, so the photos compare.`;
     }
     case "no-person":
       return "We couldn't find a person in this photo. Check the light and stand inside the outline.";
