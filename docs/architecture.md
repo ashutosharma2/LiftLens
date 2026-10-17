@@ -318,11 +318,12 @@ stateDiagram-v2
 
 ## 10. Measurement pipeline
 
-From photo to ratio, all on the device. Meaningless photos can only be retaken; a suspicious shoulder outline can be saved flagged. Only the five pixel ingredients and the method version are sent.
+From photo to ratio, all on the device. Meaningless photos can only be retaken, each with a fix-it message, and only the first failing check is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)); a suspicious shoulder outline can be saved flagged. Only the five pixel ingredients, the arm angle and the method version are sent.
 
 ```mermaid
 flowchart LR
-    Photo["Photo (canvas)"] --> Pose["Pose landmarker<br/>33 landmarks"]
+    Photo["Photo (canvas)<br/>≤ 2048 px"] --> Pose["Pose landmarker<br/>33 landmarks"]
+    Photo -- "wider than tall" --> Retake
     Pose --> Seg["Its own mask<br/>person where ≥ 50% sure (ADR-007)"]
     Pose --> Pts["Shoulder + hip joints<br/>(pixels)"]
     Pts --> Rows["Shoulder line y<br/>waist y = 65% to hips<br/>torso centre x"]
@@ -332,9 +333,15 @@ flowchart LR
     Pts --> Joints["Shoulder joint width<br/>hip joint width<br/>torso length"]
     Pose -- "nobody found" --> Retake["Retake only<br/>with a fix-it message"]
     Pts -- "joint cut off or<br/>visibility < 0.5" --> Retake
+    Pts -- "left shoulder on<br/>the image's left (back)" --> Retake
     Edges -- "outline not found" --> Retake
+    Widths -- "shoulders < 15%<br/>of photo width" --> Retake
+    Widths -- "wrist or elbow at<br/>the waist edge" --> Retake
+    Pose --> Angle["Upper-arm angle"]
+    Angle -- "> 5° from baseline's<br/>(10–35° if none)" --> Retake
     Widths --> Check{"edge ÷ joint<br/>1.1 – 1.8?"}
     Joints --> Check
+    Angle --> Check
     Check -- "yes" --> Send["Save: POST ingredients<br/>+ methodVersion"]
     Check -- "no" --> Flag["Save flagged or retake"]
     Flag --> Send
@@ -403,8 +410,9 @@ erDiagram
         number shoulderJointPx "ingredient"
         number hipJointPx "ingredient"
         number torsoLengthPx "ingredient"
+        number armAngleDeg "pose, from method v2"
         string shoulderCheck "ok, too_wide, too_narrow"
-        string methodVersion "e.g. 2026-10-posemask-v1"
+        string methodVersion "e.g. 2026-10-posemask-v2"
     }
 ```
 

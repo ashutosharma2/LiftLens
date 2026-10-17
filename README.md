@@ -86,6 +86,7 @@ The kill switch finds app resources by tag (`Project=LiftLens`, `Stack=app`), so
 | [005](docs/adr/005-store-ingredients-recompute-scores.md) | Store measurement ingredients, recompute scores | Photos are gone after each check-in, so saving the raw numbers lets better formulas apply to the whole history |
 | [006](docs/adr/006-protected-data-stack.md) | Protected data stack, DynamoDB inside the free tier | `terraform destroy` on the app must never remove user data or accounts; provisioned capacity is guaranteed $0 and caps cost |
 | [007](docs/adr/007-pose-model-outline.md) | Body outline from the pose model; one baseline per method | The video-call segmenter measured furniture as the body in an ordinary room; different methods are different rulers, so scores never mix them |
+| [008](docs/adr/008-capture-checks-and-pose-matching.md) | Catch and guide bad photos; match the baseline's pose | Sideways, back, far-away and arms-touching photos gave confident wrong numbers; arm angle moved the ratio more than the noise band |
 
 ## Repository layout
 

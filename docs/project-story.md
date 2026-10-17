@@ -95,9 +95,15 @@ My first instinct was to run the pose model in a Lambda. When I weighed it prope
 - Compared outline models on the same photos and **switched to the pose model's own outline**, which fixed every failure, removed a model download and is calibrated before it ships ([ADR-007](adr/007-pose-model-outline.md)).
 - Because stored measurements can't be re-measured, made **one baseline per measuring method**: scores never compare two rulers, old check-ins stay in the record, labelled.
 
-### 10. Documented as I went
+### 10. Taught the app to catch and guide bad photos
 
-Seven ADRs, an API contract, a scoring document, 15 architecture diagrams that mark what's built and what's planned, and a README.
+- Designed five checks, each a **signal, a rule and a fix-it message**: sideways phone, back photo, too far away, arms touching the waist, and a pose that doesn't match the baseline. All are retakes, and only the first failure is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)).
+- Set every threshold from real photos instead of a guess: a 40% "too far" idea would have rejected the calibration setup, so a distance simulation set it at 15%; the touching rule was checked on seven photos before it was written.
+- Found that **arm angle moves the ratio more than the noise does**, so each check-in stores the arm angle and must match the baseline photo's.
+
+### 11. Documented as I went
+
+Eight ADRs, an API contract, a scoring document, 15 architecture diagrams that mark what's built and what's planned, and a README.
 
 ## R: Results
 
@@ -110,7 +116,7 @@ Seven ADRs, an API contract, a scoring document, 15 architecture diagrams that m
 - **Tested:** 73 TypeScript tests and 96 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
 - **Live backend:** a stranger can sign up with a verified email, save a measurement and read their history. The stored item holds exactly the ten designed fields: no photo, no email, no score. After the first (cold) request of about 1.5–2 seconds, requests take 1–19 ms.
 - **The whole chain works in a real browser:** the same photo measured 1.785 in the Python reference and 1.78 in the browser. A second check-in from the same session was correctly reported as "no clear change", and the camera light goes off as soon as the photo is taken.
-- **Decisions on record:** seven ADRs, each with the alternatives I rejected and why.
+- **Decisions on record:** eight ADRs, each with the alternatives I rejected and why.
 
 ## T: Troubleshooting
 
@@ -257,3 +263,15 @@ Each entry gives the problem, its root cause, the fix, and what I took away from
 - *Cause:* zooming into the first photo's waist showed the old outline had filled the gap between forearm and waist, adding 35 px. The two photos also use different poses (hands on hips vs arms hanging), so they should never have been expected to match.
 - *Fix:* corrected the claim in the scoring doc and here; repeat photos for calibration use one pose.
 - *Lesson:* agreement between two numbers isn't evidence until you've checked each one is right.
+
+**A sensible-sounding threshold would have rejected good photos.**
+- *Problem:* the first idea for "too far away" was to retake when the shoulders fill under 40% of the photo's width.
+- *Cause:* the calibration setup, which measured cleanly, filled only 31%; and the pose model crops to the person, so distance matters less than with the old outline.
+- *Fix:* shrank good photos inside a larger canvas to simulate distance: no drift down to 14%, detection failing at 11%. The line went to 15%.
+- *Lesson:* test a threshold against photos you know are good before trusting it.
+
+**"Face landmarks fade from behind" was wrong.**
+- *Problem:* the plan to detect back photos assumed the face landmarks would be barely visible from behind.
+- *Cause:* MediaPipe's visibility score means "in frame and not covered", not "facing the camera": the back photo scored 0.98.
+- *Fix:* the left/right order of the shoulders, which the model labels from the body's appearance, separated the back photo from all the front and mirror photos.
+- *Lesson:* check what a model's number actually means before building on it.
