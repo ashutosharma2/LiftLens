@@ -5,7 +5,7 @@ from validation import Ingredients
 
 
 def ing(shoulder=1029.0, waist=577.0, joint=690.0):
-    return Ingredients(shoulder, waist, joint, 364.0, 905.0, "2026-10-posemask-v1")
+    return Ingredients(shoulder, waist, joint, 364.0, 905.0, 20.5, "2026-10-posemask-v2")
 
 
 def card(ts, ratio, check="ok", method="v1"):
@@ -91,3 +91,11 @@ def test_since_previous_never_compares_across_methods():
         [card("2026-09-01", 1.70, method="v1"), card("2026-09-08", 1.78, method="v1"), card("2026-10-15", 1.75, method="v2")]
     )
     assert list(changes) == ["2026-09-08"]  # the first v2 card has no previous of its own method
+
+
+def test_baseline_arm_angle_comes_from_the_current_methods_baseline():
+    old = card("2026-10-15", 1.80, method="v1")  # stored before arm angles existed
+    first = {**card("2026-10-17", 1.90, method="v2"), "armAngleDeg": 21.0}
+    later = {**card("2026-10-24", 1.91, method="v2"), "armAngleDeg": 23.0}
+    assert score_history([old]).baseline_arm_angle_deg is None
+    assert score_history([old, first, later]).baseline_arm_angle_deg == 21.0

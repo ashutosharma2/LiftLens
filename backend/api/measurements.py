@@ -30,6 +30,7 @@ def build_card(user_id: str, timestamp: str, ing: Ingredients) -> dict:
         "shoulderJointPx": ing.shoulder_joint_px,
         "hipJointPx": ing.hip_joint_px,
         "torsoLengthPx": ing.torso_length_px,
+        "armAngleDeg": ing.arm_angle_deg,
         "shoulderCheck": shoulder_check(ing.shoulder_edge_px, ing.shoulder_joint_px),
         "methodVersion": ing.method_version,
     }
@@ -42,6 +43,7 @@ class ScoredHistory:
     current_method: str | None  # method of the most recent card
     baseline_timestamp: str | None  # baseline of the current method
     baseline_timestamps: frozenset[str]  # every method's baseline
+    baseline_arm_angle_deg: float | None  # pose of the current method's baseline (ADR-008); None before method v2
     items: list[tuple[dict, ScoreResult]]  # oldest first
 
 
@@ -81,6 +83,7 @@ def score_history(cards: list[dict]) -> ScoredHistory:
         current_method=current_method,
         baseline_timestamp=current_baseline["timestamp"] if current_baseline else None,
         baseline_timestamps=frozenset(card["timestamp"] for card in baselines.values() if card),
+        baseline_arm_angle_deg=current_baseline.get("armAngleDeg") if current_baseline else None,
         items=items,
     )
 

@@ -99,6 +99,7 @@ def _get(user_id: str, deps: Deps) -> dict:
         {
             "currentMethodVersion": history.current_method,
             "baselineTimestamp": history.baseline_timestamp,
+            "baselineArmAngleDeg": history.baseline_arm_angle_deg,
             "noiseThreshold": NOISE_THRESHOLD,
             "measurements": measurements,
         },

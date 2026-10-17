@@ -11,10 +11,14 @@ MAX_BODY_BYTES = 2048
 MIN_PX = 1
 MAX_PX = 10_000
 PIXEL_FIELDS = ("shoulderEdgePx", "waistEdgePx", "shoulderJointPx", "hipJointPx", "torsoLengthPx")
+# Upper arms' angle from straight down: the pose, matched against the baseline in the browser (ADR-008).
+ANGLE_FIELD = "armAngleDeg"
+MAX_ANGLE_DEG = 90
+FIELDS = (*PIXEL_FIELDS, ANGLE_FIELD, "methodVersion")
 # Methods a new measurement may use: only the current one, so an outdated app
 # can't add check-ins measured with an old ruler. Stored cards of earlier
 # methods stay readable (ADR-007). Same as METHOD_VERSION in frontend/src/measure/maths.ts.
-KNOWN_METHOD_VERSIONS = {"2026-10-posemask-v1"}
+KNOWN_METHOD_VERSIONS = {"2026-10-posemask-v2"}
 
 
 @dataclass(frozen=True)
@@ -24,6 +28,7 @@ class Ingredients:
     shoulder_joint_px: float
     hip_joint_px: float
     torso_length_px: float
+    arm_angle_deg: float
     method_version: str
 
 
@@ -40,11 +45,10 @@ def parse_body(raw: str | None) -> Ingredients:
     if not isinstance(body, dict):
         raise ApiError(400, "Body must be a JSON object")
 
-    expected = set(PIXEL_FIELDS) | {"methodVersion"}
-    unknown = sorted(set(body) - expected)
+    unknown = sorted(set(body) - set(FIELDS))
     if unknown:
         raise ApiError(400, f"Unknown field: {unknown[0]}")
-    missing = [name for name in (*PIXEL_FIELDS, "methodVersion") if name not in body]
+    missing = [name for name in FIELDS if name not in body]
     if missing:
         raise ApiError(400, f"Missing field: {missing[0]}")
 
@@ -60,6 +64,10 @@ def parse_body(raw: str | None) -> Ingredients:
             raise ApiError(400, f"{name} must be a number between {MIN_PX} and {MAX_PX}")
         pixels[name] = float(value)
 
+    angle = body[ANGLE_FIELD]
+    if isinstance(angle, bool) or not isinstance(angle, (int, float)) or not isfinite(angle) or not 0 <= angle <= MAX_ANGLE_DEG:
+        raise ApiError(400, f"{ANGLE_FIELD} must be a number between 0 and {MAX_ANGLE_DEG}")
+
     version = body["methodVersion"]
     if not isinstance(version, str) or version not in KNOWN_METHOD_VERSIONS:
         raise ApiError(400, "methodVersion is not a known version")
@@ -74,5 +82,6 @@ def parse_body(raw: str | None) -> Ingredients:
         shoulder_joint_px=pixels["shoulderJointPx"],
         hip_joint_px=pixels["hipJointPx"],
         torso_length_px=pixels["torsoLengthPx"],
+        arm_angle_deg=float(angle),
         method_version=version,
     )

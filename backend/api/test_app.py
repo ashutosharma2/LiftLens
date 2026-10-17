@@ -79,7 +79,8 @@ def test_get_returns_history_with_scores_oldest_first(deps, clock, make_token):
     assert body["baselineTimestamp"] == body["measurements"][1]["timestamp"]
     assert [m["sinceLast"] for m in body["measurements"]] == [None, None]
     assert body["noiseThreshold"] == NOISE_THRESHOLD
-    assert body["currentMethodVersion"] == "2026-10-posemask-v1"
+    assert body["currentMethodVersion"] == "2026-10-posemask-v2"
+    assert body["baselineArmAngleDeg"] == 20.5  # the baseline's pose, for the browser's pose check
 
 
 def test_users_only_see_their_own_history(deps, make_token):
@@ -89,6 +90,7 @@ def test_users_only_see_their_own_history(deps, make_token):
     assert body == {
         "currentMethodVersion": None,
         "baselineTimestamp": None,
+        "baselineArmAngleDeg": None,
         "noiseThreshold": NOISE_THRESHOLD,
         "measurements": [],
     }

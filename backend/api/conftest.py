@@ -89,7 +89,8 @@ def ingredients(**overrides):
         "shoulderJointPx": 690,
         "hipJointPx": 364,
         "torsoLengthPx": 905,
-        "methodVersion": "2026-10-posemask-v1",
+        "armAngleDeg": 20.5,
+        "methodVersion": "2026-10-posemask-v2",
     }
     body.update(overrides)
     return {k: v for k, v in body.items() if v is not None}
