@@ -9,7 +9,6 @@ Eleven repeat photos (2026-10-17) showed the waist row at 65% sits on the shorts
 4. Deploy the API once (plan shown first); the first saved check-in becomes the new baseline and pose reference.
 
 Still open:
-- Change the Cognito password (it appeared in a screenshot during M2's smoke test).
 - BACKLOG: side-on photos, flexed poses, body touching the frame edges, back photos as a feature.
 - System-design doc + free CloudWatch alarms, then M4 (which also makes the app usable on a phone).
 
