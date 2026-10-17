@@ -336,9 +336,10 @@ flowchart LR
     Pts -- "left shoulder on<br/>the image's left (back)" --> Retake
     Edges -- "outline not found" --> Retake
     Widths -- "shoulders < 15%<br/>of photo width" --> Retake
+    Widths -- "hand at the<br/>shoulder line" --> Retake
     Widths -- "wrist or elbow at<br/>the waist edge" --> Retake
     Pose --> Angle["Upper-arm angle"]
-    Angle -- "> 5° from baseline's<br/>(10–35° if none)" --> Retake
+    Angle -- "> 2° from baseline's<br/>(10–35° if none)" --> Retake
     Widths --> Check{"edge ÷ joint<br/>1.1 – 1.8?"}
     Joints --> Check
     Angle --> Check

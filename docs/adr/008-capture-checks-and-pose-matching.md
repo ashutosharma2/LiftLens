@@ -22,8 +22,9 @@ With the pose model's outline ([ADR-007](007-pose-model-outline.md)) and a calib
 | Sideways | Photo shape | Wider than tall | Landscape photos read 0.80–1.06 |
 | Back photo | Left/right shoulder order | Left shoulder on the image's left | Front, mirror and room photos all had it on the right; the back photo on the left |
 | Too far | Shoulder width as a share of the photo width | Under 15% | Shrinking a good photo showed no drift down to 14%; detection failed at 11% |
+| Hand at the shoulder | Wrists from 0.4 above to 0.35 below the shoulder line | Inside, or within 10% of shoulder width outside, a shoulder edge | A mirror selfie's phone hand sat at −0.05 and read 1.99 (about 1.8 normally); every relaxed wrist in 11 photos was at +0.59 or lower |
 | Arms touching | Wrists and elbows at 40–90% of the way from shoulders to hips | Within 10% of shoulder width outside a waist edge, or inside it | Hands on hips: −8% and −14%. Arms clear: 22–75% |
-| Pose | Upper-arm angle (shoulder → elbow, from straight down) | Within ±5° of the baseline photo's angle; 10–35° before a baseline exists | Arm angle moved the ratio about 0.8% per degree |
+| Pose | Upper-arm angle (shoulder → elbow, from straight down), averaged over both arms | Within ±2° of the baseline photo's angle; 10–35° before a baseline exists | Same room and day: 21.3° read 1.93 and about 17° read 1.83, about 1.3% per degree |
 
 **The pose is matched against the user's own baseline, not a fixed range,** so LiftLens keeps comparing a user only with themselves. The arm angle is stored with every check-in, and the API returns the baseline's angle. This made the arm angle part of the method: version `2026-10-posemask-v2`, so the score baseline and the pose reference are always the same photo.
 
@@ -38,12 +39,13 @@ Alternatives considered:
 ## Result
 
 - Every failure seen during calibration now gets a specific message instead of a number.
-- The ±5° pose tolerance is a placeholder until it's calibrated from repeat photos, the same way as the noise band.
+- The ±2° pose tolerance is a placeholder until it's calibrated from same-session repeat photos with the noise band's recipe (2 × the gap's SD, rounded up). At about 1.3% per degree, ±5° would have let through ±6–7% of fake change.
 - A user's first check-in under this method becomes the new baseline and pose reference; earlier check-ins are labelled "earlier method".
 - Laptop webcams produce landscape frames, so the app's own camera capture only works on a phone held upright. Phones are the target, so this is accepted.
 
 ## Troubleshooting
 
 - **A threshold that sounded sensible would have rejected good photos.** The 40% "too far" idea was checked against real photos before building, and a distance simulation set the line at 15% instead.
+- **A mirror selfie passed the pose check.** Its arm angle was averaged over both arms. Checking each arm separately or their symmetry wouldn't have helped: relaxed arms differed by up to 10.6°, more than the selfie's 7.3°. The real cause was the phone hand at shoulder height joining the shoulder outline, so the fix is the hand-at-shoulder check.
 - **Elbows at waist height in relaxed photos.** With arms hanging, elbows sit near the waist row, so the touching check counts only joints near waist height and close to the edge. Checked on seven real photos before it was written.
 - **A body touching the frame edges may read low.** Both reference photos, where the body runs into the frame, read 3–5% lower than padded copies. Parked in the backlog for a real-photo test.

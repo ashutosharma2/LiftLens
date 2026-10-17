@@ -151,7 +151,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
 }
 ```
 
-`currentMethodVersion` is the method of the most recent item (`null` with no items); the app's trend shows only items of this method. `baselineTimestamp` is that method's baseline, `null` until it has an `ok` measurement. `isBaseline` is true for every method's baseline. `baselineArmAngleDeg` is that baseline's arm angle (`null` without one, or for methods before arm angles were stored); the app retakes photos whose arms are more than 5° off it. `noiseThreshold` is the server's noise band (0.024 = ±2.4%), so the app's chart always matches the score.
+`currentMethodVersion` is the method of the most recent item (`null` with no items); the app's trend shows only items of this method. `baselineTimestamp` is that method's baseline, `null` until it has an `ok` measurement. `isBaseline` is true for every method's baseline. `baselineArmAngleDeg` is that baseline's arm angle (`null` without one, or for methods before arm angles were stored); the app retakes photos whose arms are more than 2° off it. `noiseThreshold` is the server's noise band (0.024 = ±2.4%), so the app's chart always matches the score.
 
 `sinceLast` is the change since the previous `ok` measurement of the same method (flagged ones are skipped), scored with the same rule as the main score. It's `null` for flagged items and for the first `ok` item of each method. The app displays it; it never computes it.
 

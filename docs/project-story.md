@@ -97,7 +97,7 @@ My first instinct was to run the pose model in a Lambda. When I weighed it prope
 
 ### 10. Taught the app to catch and guide bad photos
 
-- Designed five checks, each a **signal, a rule and a fix-it message**: sideways phone, back photo, too far away, arms touching the waist, and a pose that doesn't match the baseline. All are retakes, and only the first failure is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)).
+- Designed six checks, each a **signal, a rule and a fix-it message**: sideways phone, back photo, too far away, a hand at the shoulder (mirror selfies), arms touching the waist, and a pose that doesn't match the baseline. All are retakes, and only the first failure is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)).
 - Set every threshold from real photos instead of a guess: a 40% "too far" idea would have rejected the calibration setup, so a distance simulation set it at 15%; the touching rule was checked on seven photos before it was written.
 - Found that **arm angle moves the ratio more than the noise does**, so each check-in stores the arm angle and must match the baseline photo's.
 

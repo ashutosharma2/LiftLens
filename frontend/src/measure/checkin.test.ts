@@ -99,6 +99,13 @@ describe("assess: catch-and-guide checks (ADR-008)", () => {
     expect(assess(far, 400, 800, rows, P)).toEqual({ kind: "too-far" });
   });
 
+  it("asks to prop the phone up when a hand is at the shoulder (a mirror selfie)", () => {
+    // Phone hand at the shoulder line (y=40), just inside the shoulder edge (x=78).
+    const selfie = body({ [LANDMARK.LEFT_WRIST]: { x: 0.74, y: 0.19, ...seen } });
+    expect(assess(selfie, 100, 200, goodRows, P)).toEqual({ kind: "hand-at-shoulder" });
+    expect(outcomeMessage({ kind: "hand-at-shoulder" })).toMatch(/Prop the phone up/);
+  });
+
   it("asks to move the arms away when a wrist touches the waist", () => {
     // Hands on hips: left wrist at the waist edge (x=70) at waist height (y=105).
     const handsOnHips = body({ [LANDMARK.LEFT_WRIST]: { x: 0.72, y: 0.525, ...seen } });
@@ -128,7 +135,7 @@ describe("assess: catch-and-guide checks (ADR-008)", () => {
   });
 
   it("matches the baseline's arm angle within the tolerance", () => {
-    expect(assess(body(), 100, 200, goodRows, P, 19.8 + POSE_TOLERANCE_DEG - 0.1).kind).toBe("measured");
+    expect(assess(body(), 100, 200, goodRows, P, 19.8 + POSE_TOLERANCE_DEG - 0.2).kind).toBe("measured");
     const off = assess(body(), 100, 200, goodRows, P, 30);
     expect(off).toEqual({ kind: "pose", armAngleDeg: expect.closeTo(19.8, 1), baselineArmAngleDeg: 30 });
     expect(outcomeMessage(off)).toBe(

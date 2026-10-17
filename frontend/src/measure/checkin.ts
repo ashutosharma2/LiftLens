@@ -5,6 +5,7 @@ import type { Ingredients } from "../api/client";
 import {
   armsTouchingWaist,
   EdgesNotFoundError,
+  handAtShoulder,
   isBackView,
   isSideways,
   measureFront,
@@ -18,8 +19,12 @@ import {
   type Landmark,
 } from "./maths";
 
-/** How far a photo's arm angle may be from the baseline's (degrees). Placeholder until calibrated from repeat photos. */
-export const POSE_TOLERANCE_DEG = 5;
+/**
+ * How far a photo's arm angle may be from the baseline's (degrees). In one room
+ * the ratio moved about 1.3% per degree, so ±2° keeps pose within the noise band.
+ * Placeholder until calibrated from same-session repeat photos (ADR-008).
+ */
+export const POSE_TOLERANCE_DEG = 2;
 
 /** Arm angles accepted when there's no baseline yet: they measured sensibly in real photos; 35° broke the ratio. */
 export const FIRST_ARM_ANGLE_MIN = 10;
@@ -32,6 +37,7 @@ export type Outcome =
   | { kind: "back" }
   | { kind: "no-edges"; where: EdgeRow }
   | { kind: "too-far" }
+  | { kind: "hand-at-shoulder" }
   | { kind: "arms-touching" }
   | { kind: "pose"; armAngleDeg: number; baselineArmAngleDeg: number | null }
   | { kind: "measured"; measurements: FrontMeasurements; ingredients: Ingredients; flagged: boolean };
@@ -65,6 +71,7 @@ export function assess(
   }
 
   if (shoulderShare(measurements, width) < MIN_SHOULDER_SHARE) return { kind: "too-far" };
+  if (handAtShoulder(landmarks, width, measurements)) return { kind: "hand-at-shoulder" };
   if (armsTouchingWaist(landmarks, width, measurements)) return { kind: "arms-touching" };
 
   const angle = measurements.armAngleDeg;
@@ -104,6 +111,8 @@ export function outcomeMessage(outcome: Outcome): string | null {
       return "This looks like a back photo. LiftLens measures front photos for now: face the camera and retake.";
     case "too-far":
       return "You're too far from the camera to measure. Step closer and retake.";
+    case "hand-at-shoulder":
+      return "Your hand is at your shoulder, so your shoulders can't be measured. Prop the phone up and use the countdown, so both arms hang slightly out.";
     case "arms-touching":
       return "Your arms or hands are touching your waist, so it can't be measured. Hold your arms slightly away from your body and retake.";
     case "pose": {

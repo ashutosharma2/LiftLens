@@ -304,24 +304,61 @@ export function upperArmAngleDeg(landmarks: Landmark[], width: number, height: n
 }
 
 /**
- * Whether a wrist or elbow touches the waist: at waist height, and inside a
- * waist edge or within TOUCH_GAP of it. Then the outline runs on into the arm,
- * so the waist width would be meaningless. Unseen or out-of-frame joints are ignored.
+ * A hand counts as at the shoulder between these fractions of the way from the
+ * shoulder line (0) to the hip line (1): a phone held up for a mirror photo sat
+ * at -0.05, while every relaxed wrist seen was at +0.59 or lower.
  */
-export function armsTouchingWaist(landmarks: Landmark[], width: number, m: FrontMeasurements): boolean {
+export const SHOULDER_HAND_HEIGHT_MIN = -0.4;
+export const SHOULDER_HAND_HEIGHT_MAX = 0.35;
+
+/**
+ * Whether any of the given joints sits within the height band and inside, or
+ * within TOUCH_GAP of, the edges measured on that band's row. Unseen or
+ * out-of-frame joints are ignored.
+ */
+function jointsAtEdges(
+  landmarks: Landmark[],
+  width: number,
+  m: FrontMeasurements,
+  joints: number[],
+  edges: BodyEdges,
+  band: { min: number; max: number },
+): boolean {
   const shoulderY = (landmarks[LANDMARK.LEFT_SHOULDER].y + landmarks[LANDMARK.RIGHT_SHOULDER].y) / 2;
   const hipY = (landmarks[LANDMARK.LEFT_HIP].y + landmarks[LANDMARK.RIGHT_HIP].y) / 2;
-  const centerX = (m.waistEdges.left + m.waistEdges.right) / 2;
-  const joints = [LANDMARK.LEFT_ELBOW, LANDMARK.RIGHT_ELBOW, LANDMARK.LEFT_WRIST, LANDMARK.RIGHT_WRIST];
+  const centerX = (edges.left + edges.right) / 2;
   return joints.some((index) => {
     const joint = landmarks[index];
     if (!joint || (joint.visibility ?? 1) < MIN_VISIBILITY || joint.x < 0 || joint.x > 1 || joint.y < 0 || joint.y > 1) {
       return false;
     }
     const along = (joint.y - shoulderY) / (hipY - shoulderY);
-    if (along < TOUCH_HEIGHT_MIN || along > TOUCH_HEIGHT_MAX) return false;
+    if (along < band.min || along > band.max) return false;
     const x = joint.x * width;
-    const outward = x < centerX ? m.waistEdges.left - x : x - m.waistEdges.right;
+    const outward = x < centerX ? edges.left - x : x - edges.right;
     return outward <= TOUCH_GAP * m.shoulderWidthPx;
+  });
+}
+
+/**
+ * Whether a wrist or elbow touches the waist: at waist height, and inside a
+ * waist edge or within TOUCH_GAP of it. Then the outline runs on into the arm,
+ * so the waist width would be meaningless.
+ */
+export function armsTouchingWaist(landmarks: Landmark[], width: number, m: FrontMeasurements): boolean {
+  const joints = [LANDMARK.LEFT_ELBOW, LANDMARK.RIGHT_ELBOW, LANDMARK.LEFT_WRIST, LANDMARK.RIGHT_WRIST];
+  return jointsAtEdges(landmarks, width, m, joints, m.waistEdges, { min: TOUCH_HEIGHT_MIN, max: TOUCH_HEIGHT_MAX });
+}
+
+/**
+ * Whether a hand is at the shoulder, e.g. holding a phone for a mirror photo.
+ * The forearm then joins the shoulder outline and widens it (a mirror selfie
+ * read 1.99 against about 1.8).
+ */
+export function handAtShoulder(landmarks: Landmark[], width: number, m: FrontMeasurements): boolean {
+  const joints = [LANDMARK.LEFT_WRIST, LANDMARK.RIGHT_WRIST];
+  return jointsAtEdges(landmarks, width, m, joints, m.shoulderEdges, {
+    min: SHOULDER_HAND_HEIGHT_MIN,
+    max: SHOULDER_HAND_HEIGHT_MAX,
   });
 }
