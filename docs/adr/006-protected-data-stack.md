@@ -15,9 +15,9 @@ M2 adds the first user data: a DynamoDB table of measurements and a Cognito user
 
 ## Action
 
-**A third Terraform root, `infra/data/`,** holds the measurement table and the user pool (with its app client). The app stack looks them up by name. Both resources also have AWS-level deletion protection, which refuses deletion from Terraform or the console until it's switched off.
+A third Terraform root, `infra/data/`, holds the measurement table and the user pool (with its app client). The app stack looks them up by name. Both resources also have AWS-level deletion protection, which refuses deletion from Terraform or the console until it's switched off.
 
-**The table uses provisioned capacity: 5 reads and 5 writes per second,** well inside the always-free 25/25, on the Standard table class (the only one the free tier covers). Requests above capacity are throttled rather than billed, and the API returns 503 "busy, try again".
+The table uses provisioned capacity of 5 reads and 5 writes per second, well inside the always-free 25/25, on the Standard table class (the only one the free tier covers). Requests above capacity are throttled rather than billed, and the API returns 503 "busy, try again".
 
 Other settings: encryption with the AWS owned key (no charge); point-in-time recovery off (continuous backups are billed per GB); Cognito on the Lite tier (10,000 monthly active users free), email sign-in with a verified email, and Cognito's built-in email sender (free, up to 50 emails a day).
 
@@ -32,7 +32,7 @@ Alternatives considered:
 - `terraform destroy` on the app stack can't reach user data, and neither the table nor the user pool can be deleted without first switching protection off.
 - The table is guaranteed $0 and acts as a second cost cap alongside the API's reserved concurrency.
 - The project rule "DynamoDB on-demand" was changed to "provisioned within the free tier".
-- Three roots to apply instead of two; the app stack depends on the data stack existing first.
+- There are three roots to apply instead of two, and the app stack needs the data stack to exist first.
 
 ## Troubleshooting
 
