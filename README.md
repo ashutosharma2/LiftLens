@@ -8,11 +8,13 @@ Progress photos are compared by eye, and lighting, camera distance, posture and 
 
 ## How it works
 
-- **Measures in your browser.** A pose model and a body-outline model run on your own device and measure your shoulder and waist widths. The photo is never uploaded ([ADR-002](docs/adr/002-pose-extraction-in-browser.md)).
-- **Tracks one honest number.** Your shoulder-to-waist ratio, measured edge to edge on your outline. Ratios don't depend on how far away the camera was, so photos stay comparable ([ADR-004](docs/adr/004-scale-free-measurements.md)).
-- **Explains every result.** Your first photo shows the ratio; later photos show the percent change since then, with the formula, the inputs and a one-sentence explanation. Changes within ±2.4%, calibrated from 10 repeat photos, are reported as noise, not progress ([scoring](docs/scoring.md)).
-- **Compares you only with you.** No "ideal body", no comparison with other users.
-- **Costs $0/month to run**, enforced by automatic guardrails.
+The measuring happens in your browser. A pose model runs on your own device, finds your joints and body outline, and measures your shoulder and waist widths. The photo is never uploaded ([ADR-002](docs/adr/002-pose-extraction-in-browser.md), [ADR-007](docs/adr/007-pose-model-outline.md)).
+
+LiftLens tracks one number: your shoulder-to-waist ratio, measured edge to edge on your outline. A ratio doesn't depend on how far away the camera was, so photos taken weeks apart stay comparable ([ADR-004](docs/adr/004-scale-free-measurements.md)).
+
+Your first photo shows the ratio. Every later photo shows the percent change since that first one, along with the formula, the inputs and a one-sentence explanation. A change within ±2.4% is reported as noise rather than progress; that band was calibrated from 10 repeat photos ([scoring](docs/scoring.md)). Photos the numbers can't be trusted on, like a sideways shot or arms touching the waist, get a retake with a reason instead of a number ([ADR-008](docs/adr/008-capture-checks-and-pose-matching.md)).
+
+You're only ever compared with yourself. There's no "ideal body" and no comparison with other users. Running it costs $0 a month, and automatic guardrails stop the app if that ever changes.
 
 ## Status
 
