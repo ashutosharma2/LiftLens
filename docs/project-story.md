@@ -33,7 +33,7 @@ Two personal constraints shaped everything:
 ### 1. Built the cost guardrails before anything else
 
 - Locked down the account: root MFA with a passkey, no root access keys, a $1 monthly budget with three alerts, and cost-anomaly alerts lowered from $100 to $1.
-- Stopped using root day to day: set up **IAM Identity Center** so my terminal gets temporary credentials through browser sign-in, with no long-lived access keys on disk.
+- Stopped using root day to day: set up IAM Identity Center so my terminal gets temporary credentials through browser sign-in, with no long-lived access keys on disk.
 - Wrote a separate Terraform stack for the guardrails, kept apart from the app so that destroying the app can never remove them:
   - **Budget → SNS → kill-switch Lambda**, which finds app resources by tag, sets Lambda concurrency to 0 and disables CloudFront. It never touches stored data or itself.
   - **Budget action → deny-all policy on a dedicated `liftlens-deploy` role**, so automated deploys stop if spending passes $1.
@@ -46,60 +46,60 @@ I replaced the always-on stack with services that bill per use and fit AWS's alw
 
 ### 3. Moved the measurement into the browser ([ADR-002](adr/002-pose-extraction-in-browser.md))
 
-My first instinct was to run the pose model in a Lambda. When I weighed it properly, it would have meant storing users' body photos in AWS and paying for a container image every month. I chose to run MediaPipe **in the browser** instead: the photo never leaves the device, and the API only ever receives numbers.
+My first instinct was to run the pose model in a Lambda. When I weighed it properly, it would have meant storing users' body photos in AWS and paying for a container image every month. So I run MediaPipe in the browser instead. The photo never leaves the device, and the API only ever receives numbers.
 
 - Split the code into `models.ts` (needs the ML models and a browser) and `maths.ts` (pure functions), so the maths can be unit-tested without a model. The waist function takes a single row of the body mask, not the photo.
 - Proved the TypeScript port is faithful: a Python script runs the prototype on real photos and saves its inputs and results, and a parity test checks that the TypeScript gets the same numbers within 1%.
 
 ### 4. Fixed what the measurements actually mean ([ADR-004](adr/004-scale-free-measurements.md))
 
-- **Both widths edge to edge.** Shoulders are now measured on the body outline like the waist, so building deltoids moves the number. To catch photos where raised arms join the outline, outer shoulder width is compared with joint width; on good photos it's 1.4–1.5×, and anything outside 1.1–1.8× is flagged.
+- **Both widths edge to edge.** Shoulders are now measured on the body outline like the waist, so building deltoids moves the number. To catch photos where raised arms join the outline, outer shoulder width is compared with joint width; on good photos it's 1.4 to 1.5×, and anything outside 1.1 to 1.8× is flagged.
 - **No centimetres.** Ratios cancel pixels within a photo, so shoulder-to-waist is valid at any distance. For comparing widths across photos, I divide by hip-joint width, a bone measurement that doesn't change with training, so it acts as a ruler present in every photo.
 
 ### 5. Designed an honest, explainable score ([scoring](scoring.md))
 
-- Tracked **one number**, shoulder-to-waist, because it was the only measurement that stayed steady across two photos of the same body, and it's the standard V-taper metric lifters already follow.
-- Compared users **only with their own first photo**, never with an "ideal" body or with other users.
-- Reported progress as a **percent change**, not invented points, so every result can be checked by hand, and treated changes under ±2% as noise.
+- Tracked one number, shoulder-to-waist, because it was the only measurement that stayed steady across two photos of the same body, and it's the standard V-taper metric lifters already follow.
+- Compared users only with their own first photo, never with an "ideal" body or with other users.
+- Reported progress as a percent change rather than made-up points, so every result can be checked by hand, and treated changes under ±2% as noise.
 
 ### 6. Designed and built the API around a trust boundary ([API contract](api.md), [ADR-005](adr/005-store-ingredients-recompute-scores.md))
 
-- The user ID comes **only from the verified sign-in token**, never from the request, so nobody can read or write another user's history.
+- The user ID comes only from the verified sign-in token, never from the request, so nobody can read or write another user's history.
 - The server stamps the time and computes the ratio itself; the browser sends raw measurements only.
-- Because the photo is gone after each check-in, every measurement stores the **raw per-photo values** too, so better formulas can be applied to past photos later. Scores are recomputed on every read, so a recalibrated threshold improves the whole history at once.
+- Because the photo is gone after each check-in, every measurement stores the raw per-photo values too, so better formulas can be applied to past photos later. Scores are recomputed on every read, so a recalibrated threshold improves the whole history at once.
 - Token verification uses a standard library (PyJWT) against Cognito's public keys, cached between requests, with no network call per request.
 - Everything that talks to the outside world (keys, clock, database) sits behind small interfaces, so tests run the real logic with fakes.
 
 ### 7. Deployed the backend with user data protected ([ADR-006](adr/006-protected-data-stack.md))
 
-- Put the measurement table **and the user pool** in their own Terraform stack with deletion protection, so tearing down the app can never delete user data. The pool had to move too: each measurement is keyed by the user's Cognito ID, and recreating the pool would issue everyone a new one, orphaning their history.
-- Chose **provisioned** DynamoDB capacity inside the free tier instead of on-demand: guaranteed $0, and requests over capacity are throttled rather than billed.
-- Opened sign-up to anyone, but only with a **verified email**, so nobody can register an address they don't own.
+- Put the measurement table and the user pool in their own Terraform stack with deletion protection, so tearing down the app can never delete user data. The pool had to move too: each measurement is keyed by the user's Cognito ID, and recreating the pool would issue everyone a new one, orphaning their history.
+- Chose provisioned DynamoDB capacity inside the free tier instead of on-demand. It's guaranteed $0, and requests over capacity are throttled rather than billed.
+- Opened sign-up to anyone, but only with a verified email, so nobody can register an address they don't own.
 - Kept the API's address public for now: the token check protects the data, and a reserved concurrency of 2 caps the cost of junk requests.
 - Packaged the API's crypto library for Lambda's Linux on arm64, not for my Mac, and smoke-tested the live API: sign-up, email code, token, a saved measurement and the history read back.
 
 ### 8. Built the browser app around the user's flow
 
-- Designed the app as **states** with clear ways in and out: sign in → history → guided capture → measuring → result → save. Returning users land on their history, not the camera.
-- Built **my own sign-in screens** with Amplify Auth (SRP, so the password never leaves the browser), so sign-in matches the app's look.
-- Designed capture for someone **alone**: the phone is propped up, a body outline and a 10-second countdown guide the pose so both arms are free for the shoulder check, with upload as a fallback. The camera turns off the moment the photo is taken.
-- Made **Save a separate step**, so a bad first photo can't silently become the permanent baseline.
-- Measured the photo **on the device**: the models start downloading as soon as the check-in screen opens, a scan line shows each step, and the shoulder and waist lines are drawn on the photo.
-- Turned photo quality into one rule: **retake what's meaningless, flag what's suspicious.** Nobody found, a joint cut off or unclear, or no outline means the numbers would be meaningless, so only a retake is offered; arms in the shoulder outline give real but doubtful numbers, which can be saved flagged.
-- Kept **all scoring on the server**: when "change since last check-in" was first built in the browser with its own copy of the noise rule, it moved into the API.
+- Designed the app as a set of states with clear ways in and out: sign in → history → guided capture → measuring → result → save. Returning users land on their history, not the camera.
+- Built my own sign-in screens with Amplify Auth (SRP, so the password never leaves the browser), so sign-in matches the rest of the app.
+- Designed capture for someone on their own: the phone is propped up, a body outline and a 10-second countdown guide the pose so both arms are free for the shoulder check, with upload as a fallback. The camera turns off the moment the photo is taken.
+- Made Save a separate step, so a bad first photo can't silently become the permanent baseline.
+- Measured the photo on the device. The models start downloading as soon as the check-in screen opens, a scan line shows each step, and the shoulder and waist lines are drawn on the photo.
+- Turned photo quality into one rule: **retake what's meaningless, flag what's suspicious.** If nobody is found, a joint is cut off or unclear, or there's no outline, the numbers would be meaningless, so only a retake is offered. Arms in the shoulder outline give real but doubtful numbers, which can be saved as flagged.
+- Kept all scoring on the server. When "change since last check-in" was first built in the browser with its own copy of the noise rule, it moved into the API.
 
 ### 9. Made measuring survive an ordinary room
 
-- Calibrated the noise threshold by deciding the method first: **10 repeat photos**, re-standing and re-propping the phone between each, threshold = **2 × the standard deviation of the gap between two photos**, chosen before seeing any numbers. A calculator script makes the maths repeatable. Ten readings on the new method gave **±2.4%**, replacing the ±2% placeholder.
-- The first photos, taken in a lived-in bedroom, gave impossible ratios. **Drawing the mask over the photo** showed the outline model painting a chair, dark bedding and my arms as part of me.
-- Compared outline models on the same photos and **switched to the pose model's own outline**, which fixed every failure, removed a model download and is calibrated before it ships ([ADR-007](adr/007-pose-model-outline.md)).
-- Because stored measurements can't be re-measured, made **one baseline per measuring method**: scores never compare two rulers, old check-ins stay in the record, labelled.
+- Calibrated the noise threshold by deciding the method before seeing any numbers: 10 repeat photos, re-standing and re-propping the phone between each, and a threshold of 2 × the standard deviation of the gap between two photos. A calculator script makes the maths repeatable. Ten readings on the new method gave ±2.4%, replacing the ±2% placeholder.
+- The first photos, taken in a lived-in bedroom, gave impossible ratios. Drawing the mask over the photo showed the outline model painting a chair, dark bedding and my arms as part of me.
+- Compared outline models on the same photos and switched to the pose model's own outline. It fixed every failure, removed a model download, and got calibrated before shipping ([ADR-007](adr/007-pose-model-outline.md)).
+- Because stored measurements can't be re-measured, made one baseline per measuring method. Scores never compare two rulers, and old check-ins stay in the record with a label.
 
 ### 10. Taught the app to catch and guide bad photos
 
-- Designed six checks, each a **signal, a rule and a fix-it message**: sideways phone, back photo, too far away, a hand at the shoulder (mirror selfies), arms touching the waist, and a pose that doesn't match the baseline. All are retakes, and only the first failure is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)).
+- Designed six checks, each made of a signal, a rule and a message saying how to fix it: sideways phone, back photo, too far away, a hand at the shoulder (mirror selfies), arms touching the waist, and a pose that doesn't match the baseline. All are retakes, and only the first failure is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)).
 - Set every threshold from real photos instead of a guess: a 40% "too far" idea would have rejected the calibration setup, so a distance simulation set it at 15%; the touching rule was checked on seven photos before it was written.
-- Found that **arm angle moves the ratio more than the noise does**, so each check-in stores the arm angle and must match the baseline photo's.
+- Found that arm angle moves the ratio more than the noise does, so each check-in stores its arm angle and has to match the baseline photo's.
 
 ### 11. Documented as I went
 
@@ -111,10 +111,10 @@ Eight ADRs, an API contract, a scoring document, 15 architecture diagrams that m
 - **Photos never leave the device.** There are no stored images to secure, leak or delete, and no container image costs.
 - **Measurements you can trust and check:**
   - The TypeScript engine matches the Python reference within 1% on real photos.
-  - A new outline method turned impossible readings in a cluttered room (0.64–1.08) into plausible ones (1.61–1.90), and each method keeps its own baseline so a method change never shows up as fake progress.
+  - A new outline method turned impossible readings in a cluttered room (0.64 to 1.08) into plausible ones (1.61 to 1.90), and each method keeps its own baseline so a method change never shows up as fake progress.
   - Every score shows its formula, its inputs and a one-sentence explanation.
 - **Tested:** 73 TypeScript tests and 96 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
-- **Live backend:** a stranger can sign up with a verified email, save a measurement and read their history. The stored item holds exactly the ten designed fields: no photo, no email, no score. After the first (cold) request of about 1.5–2 seconds, requests take 1–19 ms.
+- **Live backend:** a stranger can sign up with a verified email, save a measurement and read their history. The stored item holds exactly the ten designed fields: no photo, no email, no score. After the first (cold) request of about 1.5 to 2 seconds, requests take 1 to 19 ms.
 - **The whole chain works in a real browser:** the same photo measured 1.785 in the Python reference and 1.78 in the browser. A second check-in from the same session was correctly reported as "no clear change", and the camera light goes off as soon as the photo is taken.
 - **Decisions on record:** eight ADRs, each with the alternatives I rejected and why.
 
