@@ -2,7 +2,7 @@
 
 Scenario, Obstacle, Action, Result, Troubleshooting. This is how LiftLens was planned and built, the decisions behind it, and what went wrong along the way. The detailed reasoning for each decision is in the [ADRs](adr/).
 
-**Status:** in progress. Cost guardrails (M0), the measurement engine (M1), the backend (M2) and the browser app (M3) are done; hosting it on CloudFront (M4) is next.
+**Status:** in progress. Cost guardrails (M0), the measurement engine (M1), the backend (M2) and the browser app (M3) are done, along with the noise calibration and the photo checks. Next I'm confirming the waist height on a fresh set of photos, then hosting the app on CloudFront (M4).
 
 ---
 
@@ -113,7 +113,7 @@ Eight ADRs, an API contract, a scoring document, 15 architecture diagrams that m
   - The TypeScript engine matches the Python reference within 1% on real photos.
   - A new outline method turned impossible readings in a cluttered room (0.64 to 1.08) into plausible ones (1.61 to 1.90), and each method keeps its own baseline so a method change never shows up as fake progress.
   - Every score shows its formula, its inputs and a one-sentence explanation.
-- **Tested:** 73 TypeScript tests and 96 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
+- **Tested:** 89 TypeScript tests and 112 Python tests. The security tests include forged signatures, an edited user ID and expired tokens, and every validation rule in the API contract has a test.
 - **Live backend:** a stranger can sign up with a verified email, save a measurement and read their history. The stored item holds exactly the ten designed fields: no photo, no email, no score. After the first (cold) request of about 1.5 to 2 seconds, requests take 1 to 19 ms.
 - **The whole chain works in a real browser:** the same photo measured 1.785 in the Python reference and 1.78 in the browser. A second check-in from the same session was correctly reported as "no clear change", and the camera light goes off as soon as the photo is taken.
 - **Decisions on record:** eight ADRs, each with the alternatives I rejected and why.
