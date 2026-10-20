@@ -1,6 +1,6 @@
 # Backlog (ideas parked so they don't hijack a session)
 
-## M0 — guardrails (must finish before any deploy)
+## M0 guardrails (must finish before any deploy)
 - [x] M0.2 IAM Identity Center user + `aws configure sso`; verify `aws sts get-caller-identity`
 - [x] M0.3 infra/ skeleton: versions.tf, providers.tf, main.tf; local state; .gitignore checked
 - [x] M0.4 Budget Action in Terraform: at $1 actual, attach deny-all policy to build user + CI role
