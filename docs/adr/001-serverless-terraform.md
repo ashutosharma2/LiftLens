@@ -5,11 +5,11 @@
 
 ## Scenario
 
-LiftLens must cost $0/month, and the AWS account is on the Paid plan, so there is no automatic spending cap: anything that bills will bill. The project is also a learning build; every resource has to be explainable.
+LiftLens must cost $0 a month. The AWS account is on the Paid plan, which has no automatic spending cap, so anything that bills will bill. It's also a learning build, so every resource has to be something I can explain.
 
 ## Obstacle
 
-The original design in `docs/` was a conventional web stack, and almost every piece of it runs around the clock:
+The original design in `docs/` was a conventional web stack, and almost every piece of it runs all day and night:
 
 | Piece | What it needs on AWS |
 |---|---|
@@ -23,14 +23,14 @@ These bill by the hour whether anyone uses the app or not. Even the smallest dat
 
 ## Action
 
-**Go serverless.** Use only services that bill per use and whose usage fits AWS's always-free allowances:
+Go serverless, using only services that bill per use and stay inside AWS's always-free allowances:
 
 - API: one Python Lambda behind a Lambda Function URL.
 - Data: DynamoDB on-demand, keyed by `userId` + `timestamp`.
 - Web: S3 + CloudFront.
 - Auth: Cognito.
 
-**Manage it with Terraform.** Its main value here is that `terraform plan` shows exactly what will be created, changed or destroyed **before** anything happens, and nothing is applied without reviewing that plan. It also means:
+Manage it with Terraform. The main reason is that `terraform plan` shows exactly what will be created, changed or destroyed before anything happens, and nothing gets applied until that plan has been reviewed. Terraform also means:
 
 - `terraform destroy` removes exactly what a root created, so experiments don't leave forgotten resources behind.
 - The infrastructure is code in Git, with history and review.
@@ -43,9 +43,9 @@ Alternatives considered:
 
 ## Result
 
-What we gain: $0/month at portfolio scale, nothing to patch or keep running, and infrastructure that can be reviewed before it changes and torn down cleanly.
+This gets $0 a month at portfolio scale, nothing to patch or keep running, and infrastructure that is reviewed before it changes and can be torn down cleanly.
 
-What we give up:
+The costs:
 
 - **SQL-style queries.** DynamoDB looks items up by key; ad-hoc queries across users ("average ratio per month for September sign-ups") are hard. V1 only needs one user's history, newest first, which the `userId` + `timestamp` key serves directly. Accepted as worth it for $0.
 - **Cold starts.** A Lambda that hasn't run recently takes up to about a second to answer its first request.
@@ -57,4 +57,4 @@ Revisit when V2 needs cross-user analytics or reporting (consider a SQL store or
 ## Troubleshooting
 
 - **Stale documentation.** After this decision, `docs/` still described the FastAPI/PostgreSQL design, which could mislead readers. Each of those files now opens with a "Superseded" banner pointing to the README; they get rewritten or removed in M6.
-- **Plan review caught a stale plan.** The first real `apply` failed on an expired sign-in and left a lookup-only state file, so Terraform refused the reviewed plan as stale. Re-planning, confirming the plan was identical and approving it again is exactly the review step this decision relies on (see [the project story](../project-story.md#t-troubleshooting)).
+- **Plan review caught a stale plan.** The first real `apply` failed on an expired sign-in and left a lookup-only state file, so Terraform refused the reviewed plan as stale. Re-planning, checking the new plan was identical and approving it again is the same review step this decision depends on (see [the project story](../project-story.md#t-troubleshooting)).

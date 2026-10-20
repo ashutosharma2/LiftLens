@@ -3,16 +3,16 @@
 ## Summary (SOART)
 
 - **Scenario:** the browser measures each photo locally and needs somewhere to save the numbers and get a score back.
-- **Obstacle:** the browser runs on a device the user controls, so any request can be edited; the server can't trust the user ID, the time or a claimed ratio. And because photos are discarded, anything not saved at check-in is lost.
-- **Action:** the user ID comes only from the verified Cognito token; the server stamps the time and computes the ratio and shoulder check itself; the body accepts exactly seven fields with strict limits; raw per-photo values are stored and scores recomputed on every read ([ADR-005](adr/005-store-ingredients-recompute-scores.md)).
+- **Obstacle:** the browser runs on a device the user controls, so any request can be edited, and the server can't trust the user ID, the time or a claimed ratio. Photos are also discarded, so anything not saved at check-in is lost.
+- **Action:** the user ID comes only from the verified Cognito token. The server stamps the time and works out the ratio and shoulder check itself. The body accepts exactly seven fields, each with strict limits. Raw per-photo values are stored and scores are recomputed on every read ([ADR-005](adr/005-store-ingredients-recompute-scores.md)).
 - **Result:** one user can never read or write another's history, impossible values never reach the database, and formula improvements apply to the whole history. 63 tests cover every rule below.
-- **Troubleshooting:** unknown paths originally returned 405; they now return 404, with 405 kept for wrong methods. Tests that advanced a fake clock got 401 because their tokens had expired; the API was right, and the tests now mint tokens from the fake clock.
+- **Troubleshooting:** unknown paths originally returned 405; they now return 404, with 405 kept for wrong methods. Tests that moved a fake clock forward got 401 because their tokens had expired. The API was right, so the tests now mint tokens from the fake clock.
 
 The rest of this document is the reference contract.
 
 One Lambda behind a Lambda Function URL, served through CloudFront at `/api/*` on the same domain as the web app. Requests and responses are JSON.
 
-The browser measures the photo and sends **numbers only** ([ADR-002](adr/002-pose-extraction-in-browser.md)). Every request is treated as untrusted: the browser runs on the user's device, and anyone can edit a request in DevTools.
+The browser measures the photo and sends only numbers ([ADR-002](adr/002-pose-extraction-in-browser.md)). Every request is treated as untrusted: the browser runs on the user's device, and anyone can edit a request in DevTools.
 
 ## Authentication
 
@@ -35,14 +35,14 @@ DynamoDB table `liftlens-measurements`, provisioned at 5 reads and 5 writes per 
 | `hipJointPx` | number | | Distance between the hip joint landmarks |
 | `torsoLengthPx` | number | | Shoulder line to hip line |
 | `shoulderCheck` | string | | `ok`, `too_wide` or `too_narrow`, computed by the server |
-| `armAngleDeg` | number | | Upper arms' angle from straight down (0–90°): the pose, matched against the baseline's in the browser ([ADR-008](adr/008-capture-checks-and-pose-matching.md)) |
+| `armAngleDeg` | number | | Upper arms' angle from straight down (0 to 90°): the pose, matched against the baseline's in the browser ([ADR-008](adr/008-capture-checks-and-pose-matching.md)) |
 | `methodVersion` | string | | Which measuring method (outline source plus maths) produced the numbers ([ADR-007](adr/007-pose-model-outline.md)) |
 
 Not stored: the photo (it never leaves the device), the user's email (Cognito has it), and scores (recomputed on every read, see [ADR-005](adr/005-store-ingredients-recompute-scores.md)).
 
-Pixel values are **never shown** to users: they depend on camera distance ([ADR-004](adr/004-scale-free-measurements.md)). They are stored as ingredients, so ratios and rulers invented later can be computed for old photos too.
+Pixel values are never shown to users, because they depend on camera distance ([ADR-004](adr/004-scale-free-measurements.md)). They are stored as ingredients, so ratios and rulers invented later can be computed for old photos too.
 
-**Baseline:** each `methodVersion` has its own: the earliest item of that method with `shoulderCheck = "ok"`, found by reading the user's items in order. Different methods are different rulers, so scores never compare across them ([ADR-007](adr/007-pose-model-outline.md)). A user adds about one item a week, so reading them all stays small.
+**Baseline:** each `methodVersion` has its own, which is the earliest item of that method with `shoulderCheck = "ok"`, found by reading the user's items in order. Different methods are different rulers, so scores never compare across them ([ADR-007](adr/007-pose-model-outline.md)). A user adds about one item a week, so reading them all stays small.
 
 ## `POST /api/measurements`
 
@@ -71,7 +71,7 @@ Saves one measurement and returns it with its score.
 | Any pixel value isn't a finite number between 1 and 10,000 | 400 |
 | `armAngleDeg` isn't a finite number between 0 and 90 | 400 |
 | `methodVersion` isn't the current version (`2026-10-posemask-v2`); earlier methods stay readable but can't be added to | 400 |
-| `shoulderEdgePx ÷ waistEdgePx` is outside 0.8–3.0 | 400 |
+| `shoulderEdgePx ÷ waistEdgePx` is outside 0.8 to 3.0 | 400 |
 
 Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10000"}`.
 
@@ -79,7 +79,7 @@ Error responses name the field: `{"error": "waistEdgePx must be between 1 and 10
 
 1. Verify the token; take `userId` from `sub`.
 2. Validate the body.
-3. Compute `shoulderToWaist` and `shoulderCheck` (outer shoulder ÷ shoulder joints, plausible range 1.1–1.8).
+3. Compute `shoulderToWaist` and `shoulderCheck` (outer shoulder ÷ shoulder joints, plausible range 1.1 to 1.8).
 4. Stamp `timestamp` with the server's current UTC time.
 5. Save the item.
 6. Read the user's items, find the baseline of this item's method, compute the score.
@@ -153,7 +153,7 @@ Returns all of the signed-in user's measurements, oldest first, each with its sc
 
 `currentMethodVersion` is the method of the most recent item (`null` with no items); the app's trend shows only items of this method. `baselineTimestamp` is that method's baseline, `null` until it has an `ok` measurement. `isBaseline` is true for every method's baseline. `baselineArmAngleDeg` is that baseline's arm angle (`null` without one, or for methods before arm angles were stored); the app retakes photos whose arms are more than 2° off it. `noiseThreshold` is the server's noise band (0.024 = ±2.4%), so the app's chart always matches the score.
 
-`sinceLast` is the change since the previous `ok` measurement of the same method (flagged ones are skipped), scored with the same rule as the main score. It's `null` for flagged items and for the first `ok` item of each method. The app displays it; it never computes it.
+`sinceLast` is the change since the previous `ok` measurement of the same method (flagged ones are skipped), scored with the same rule as the main score. It's `null` for flagged items and for the first `ok` item of each method. The app only displays it and never computes it.
 
 ## Scores per item
 

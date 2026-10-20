@@ -3,7 +3,7 @@
 ## Summary (SOART)
 
 - **Scenario:** LiftLens turns a front-facing photo into a shoulder-to-waist measurement and tracks it over time, on AWS, at $0/month.
-- **Obstacle:** the design decisions are spread across six ADRs, the API contract and the scoring spec; there was no single picture of how the pieces fit, and the previous version of this file described an abandoned FastAPI design.
+- **Obstacle:** the design decisions are spread across the ADRs, the API contract and the scoring spec, with no single picture of how the pieces fit. The previous version of this file also described an abandoned FastAPI design.
 - **Action:** one diagram per view of the system, each drawn from the code and Terraform as they are today. Solid lines and boxes are built; dashed ones are planned.
 - **Result:** the whole system can be followed from the photo to the stored number, from sign-up to a saved measurement, and from a $1 bill to a stopped app.
 - **Troubleshooting:** the diagrams are only useful while they're accurate, so they're updated at the end of every milestone, alongside the README.
@@ -204,7 +204,7 @@ flowchart TB
 
 ## 6. Identity and access
 
-Who can do what. People sign in with temporary credentials only; every service role is limited to exactly what it needs.
+Who can do what. People sign in with temporary credentials only, and every service role is limited to what it needs.
 
 ```mermaid
 flowchart LR
@@ -258,7 +258,7 @@ flowchart LR
 
 ## 8. Sign-up and sign-in
 
-Amplify runs SRP, so the password itself is never sent. Tokens refresh quietly; a 401 sends the user back to sign in.
+Amplify runs SRP, so the password itself is never sent. Tokens refresh in the background, and a 401 sends the user back to sign in.
 
 ```mermaid
 sequenceDiagram
@@ -318,7 +318,7 @@ stateDiagram-v2
 
 ## 10. Measurement pipeline
 
-From photo to ratio, all on the device. Meaningless photos can only be retaken, each with a fix-it message, and only the first failing check is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)); a suspicious shoulder outline can be saved flagged. Only the five pixel ingredients, the arm angle and the method version are sent.
+From photo to ratio, all on the device. Meaningless photos can only be retaken, each with a message saying how to fix it, and only the first failing check is shown ([ADR-008](adr/008-capture-checks-and-pose-matching.md)). A suspicious shoulder outline can be saved as flagged. Only the five pixel ingredients, the arm angle and the method version are sent.
 
 ```mermaid
 flowchart LR

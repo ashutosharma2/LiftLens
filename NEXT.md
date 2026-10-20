@@ -1,4 +1,4 @@
-# Next session — ONE task
+# Next session: one task
 
 **Validate the 55% waist row on a fresh session, then set the method and both thresholds**
 Eleven repeat photos (2026-10-17) showed the waist row at 65% sits on the shorts' waistband and drives most of the wobble; at 55% the ratio's SD fell from 3.58% to 1.13%. That height was picked from six on the same photos, so it has to be confirmed on photos it has never seen.

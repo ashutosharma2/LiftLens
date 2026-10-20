@@ -13,7 +13,7 @@ The model has to run somewhere, and the two places pull in opposite directions:
 
 | | Browser (MediaPipe Tasks Vision JS) | Container-image Lambda (Python MediaPipe) |
 |---|---|---|
-| Cost | Runs on the user's device; AWS stores only numbers | MediaPipe + OpenCV exceed the 250 MB zip limit, so it needs a container image in ECR (roughly 0.5–1 GB, about $0.05–0.10/month, not always-free), an S3 upload bucket and 1–3 s of compute per photo |
+| Cost | Runs on the user's device; AWS stores only numbers | MediaPipe + OpenCV exceed the 250 MB zip limit, so it needs a container image in ECR (roughly 0.5 to 1 GB, about $0.05 to $0.10 a month, not always-free), an S3 upload bucket and 1 to 3 s of compute per photo |
 | Privacy | The photo never leaves the device | Body photos are uploaded to and stored in AWS |
 | Latency | One-time model download, then well under a second per photo on most devices | Upload, plus a cold start of a large container (often several seconds), plus processing |
 | Accuracy | Same model family on WebGL/WASM; small differences between devices | Identical hardware every time |
@@ -21,11 +21,11 @@ The model has to run somewhere, and the two places pull in opposite directions:
 
 ## Action
 
-Run pose detection and measurement **in the browser**. The photo never leaves the user's device; the API receives only the resulting measurements.
+Pose detection and measurement run in the browser. The photo never leaves the user's device, and the API receives only the resulting numbers.
 
-The deciding factor is **privacy**. Physique photos are highly sensitive personal data. If LiftLens never receives them, there is nothing to leak, secure or delete, and no question of trusting us with them. Removing the ECR cost is a further benefit under the $0 constraint.
+Privacy decided it. Physique photos are very sensitive personal data, and if LiftLens never receives them, there's nothing to leak, secure or delete, and nobody has to trust us with them. Dropping the ECR cost also helps with the $0 constraint.
 
-Alternative considered: **container-image Lambda.** It reuses the Python prototype and gives identical results everywhere, but uploads and stores body photos and adds an ongoing ECR cost. Rejected on privacy.
+The alternative was a container-image Lambda. It would reuse the Python prototype and give identical results everywhere, but it uploads and stores body photos and adds an ongoing ECR cost. Rejected on privacy.
 
 ## Result
 
@@ -40,4 +40,4 @@ Alternative considered: **container-image Lambda.** It reuses the Python prototy
 - **MediaPipe JS can't run in unit tests.** It needs WASM and WebGL in a real browser, so Vitest can't execute it. Fix: split the code into `models.ts` (browser only) and `maths.ts` (pure functions), and prove the port with a parity test: a Python script exports each photo's landmarks and mask rows plus its results, and the TypeScript maths must reproduce them within 1%.
 - **The reference script crashed on the mask.** `TypeError: only 0-dimensional arrays can be converted to Python scalars`, because the mask came back as `(height, width, 1)`. Fix: `squeeze()` the extra axis.
 - **The browser build failed on a test file.** The parity test uses Node's `fs`, which the browser type configuration doesn't know. Fix: tests get their own `tsconfig.test.json` and are excluded from the browser build.
-- **Scoring logic crept into the browser.** The History screen's "change since last check-in" was first built in the browser, with its own copy of the ±2% noise threshold, which went against "scoring stays server-side". Calibrating the threshold later would have meant changing two copies, or History and the score would disagree. Fix: the API now returns `sinceLast` (scored by the same shared function as progress) and `noiseThreshold`; the browser copy was deleted, not just guarded by a test.
+- **Scoring logic crept into the browser.** The History screen's "change since last check-in" was first built in the browser, with its own copy of the ±2% noise threshold, which went against "scoring stays server-side". Calibrating the threshold later would have meant changing two copies, or History and the score would disagree. Fix: the API returns `sinceLast` (scored by the same shared function as progress) and `noiseThreshold`, and the browser copy was deleted rather than just guarded by a test.

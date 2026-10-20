@@ -9,9 +9,9 @@ The project rule is that every Lambda sets reserved concurrency (default 2), so 
 
 ## Obstacle
 
-This account's Lambda quota is **10 concurrent executions**, and AWS requires at least 10 to stay unreserved. With a quota of 10, no function can reserve any concurrency: setting it fails. (Setting a function to **0**, which is what the kill switch does, is still allowed.)
+This account's Lambda quota is 10 concurrent executions, and AWS requires at least 10 to stay unreserved. So with a quota of 10, no function can reserve any concurrency, and setting it fails. (Setting a function to 0, which is what the kill switch does, is still allowed.)
 
-Consequences of the low quota:
+What the low quota means:
 
 - The whole account can run at most 10 Lambda invocations at once. Extra requests are throttled, not queued, and throttled requests cost nothing.
 - All functions share those 10 slots. A flood of API traffic could briefly crowd out the kill switch.
@@ -19,7 +19,7 @@ Consequences of the low quota:
 ## Action
 
 1. Request a quota increase to 1,000 concurrent executions (Service Quotas, free).
-2. Until it is approved, deploy Lambdas **without** reserved concurrency. The account quota of 10 is the interim cap.
+2. Until it's approved, deploy Lambdas without reserved concurrency, and let the account quota of 10 act as the cap.
 3. When the increase is approved, give every Lambda reserved concurrency (kill switch and API at 2) and mark this ADR superseded.
 
 Alternatives considered:
