@@ -4,6 +4,8 @@
 
 Progress photos are compared by eye, and lighting, camera distance, posture and memory all get in the way. LiftLens turns a front-facing photo into a measurement you can track and check.
 
+It's a serverless SaaS web app on AWS. Pose detection runs on the user's device for privacy, and the backend is Lambda with DynamoDB and Cognito, all managed with Terraform at $0 a month.
+
 **[Read the project story](docs/project-story.md)**: the problems, decisions and fixes behind LiftLens, in SOART format.
 
 ## How it works
