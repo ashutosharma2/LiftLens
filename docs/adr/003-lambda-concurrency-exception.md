@@ -36,6 +36,8 @@ Alternatives considered:
 
 **Update, 2026-10-10:** the account limit was raised to 400 (the request for 1,000 is still open). Reserved concurrency is now set: kill switch 2, API 2. With the account limit no longer acting as a cap, the API's reservation of 2 is what limits how fast a flood of requests can spend.
 
+**Update, 2026-10-15:** AWS approved the original request, so the limit is now 1,000. Nothing in Terraform changes: each function still reserves 2, and the API's reservation is still what caps spend.
+
 ## Troubleshooting
 
 - **How it was found.** Before writing the kill switch, a read-only `aws lambda get-account-settings` check returned `ConcurrentExecutions: 10` and `UnreservedConcurrentExecutions: 10`. Checking the quota first avoided a failed `terraform apply` on the reserved-concurrency setting.

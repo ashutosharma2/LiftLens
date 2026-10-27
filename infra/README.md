@@ -35,7 +35,7 @@ Three Terraform roots, each with its own state:
 
 - **Expired sign-in during apply.** `Error: No valid credential sources found` means the 4-hour SSO session expired. Run `aws sso login --profile liftlens` and retry.
 - **"Saved plan is stale".** A failed apply can still write state (for example, lookups only), which invalidates a saved plan. Check the state with `terraform state list`, run `plan` again, review it, then apply the new plan.
-- **No reserved concurrency (fixed).** The account's original Lambda limit of 10 allowed none ([ADR-003](../docs/adr/003-lambda-concurrency-exception.md)); after it was raised to 400, the kill switch and API each reserve 2.
+- **No reserved concurrency (fixed).** The account's original Lambda limit of 10 allowed none ([ADR-003](../docs/adr/003-lambda-concurrency-exception.md)); after it was raised (to 400 on 2026-10-10, then 1,000 on 2026-10-15), the kill switch and API each reserve 2.
 - **The app plan fails with "no matching table" or similar.** The app stack reads the table and user pool created by `data/`; apply `data/` first.
 
 ## Reference: running Terraform
