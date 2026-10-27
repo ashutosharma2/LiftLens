@@ -25,6 +25,7 @@
 - [ ] ADR (later): move the app into a separate member AWS account (SCPs apply there; keeps management account empty)
 - [x] ADR-002: pose extraction in browser (MediaPipe JS) vs container-image Lambda
 - [ ] Update docs/ to the serverless architecture
+- [ ] With M4: plan and apply in CI through OIDC (Terraform state in S3, a CI role the budget action also locks, apply only after my approval in a protected environment). Decide two things first: how much of a plan to print, since Actions logs on a public repo are public and ARNs include the account ID, and the cost of the state bucket, since S3 has no permanent free tier on this account
 - [ ] M5: replace the AdministratorAccess permission set with a custom least-privilege set built from the actions Terraform actually used (CloudTrail)
 - [ ] Find end-sem exam dates and shift milestones
 - [ ] Measure more muscle groups on the body map (later version); needs a method that's reliable from photos before anything is shown

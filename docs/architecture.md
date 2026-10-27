@@ -445,7 +445,7 @@ sequenceDiagram
 
 ## 15. Deployment
 
-How changes reach AWS today, and with CI/CD from M5. Every apply follows a reviewed plan.
+How changes reach AWS. Every pull request and every push to `main` runs the checks on GitHub Actions, with no AWS access. Plan and apply in CI come with M4; until then they run locally with SSO, and every apply follows a reviewed plan.
 
 ```mermaid
 flowchart LR
@@ -455,10 +455,11 @@ flowchart LR
     Review --> Apply["terraform apply"]
     Apply --> Smoke["Smoke test<br/>401 without token, real sign-in"]
 
-    Code -. "pull request" .-> PRChecks["GitHub Actions: fmt, validate,<br/>tests, plan comment"]
-    PRChecks -. "merge" .-> Approve["Protected environment<br/>manual approval"]
+    Code -- "pull request, push" --> Checks["GitHub Actions checks<br/>tests, lint, build, fmt, validate"]
+    Checks -. "merge (with M4)" .-> CIPlan["terraform plan in CI"]
+    CIPlan -.-> Approve["Protected environment<br/>manual approval"]
     Approve -. "OIDC, liftlens-deploy" .-> CIApply["apply + build frontend<br/>sync to S3, invalidate CloudFront"]
 
-    class PRChecks,Approve,CIApply planned
+    class CIPlan,Approve,CIApply planned
     classDef planned stroke-dasharray: 5 5
 ```

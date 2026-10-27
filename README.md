@@ -27,7 +27,7 @@ You're only ever compared with yourself. There's no "ideal body" and no comparis
 | M2 Auth, API, data | ✅ | Cognito sign-up, DynamoDB, measurements API live and smoke-tested |
 | M3 Frontend | ✅ | Sign-in, guided capture, measuring on the device, save, history with trend |
 | M4 Deploy | ⏳ | Next: S3 + CloudFront |
-| M5 CI/CD | | GitHub Actions with OIDC |
+| M5 CI/CD | ⏳ | Tests and checks run on every pull request; plan and apply through OIDC come with M4 |
 | M6 Portfolio finish | | Screenshots, cost write-up |
 
 ## Architecture
