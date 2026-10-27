@@ -13,7 +13,8 @@ Work on a branch, `waist-55-validation` (one branch and PR per task from now on;
 
 Still open:
 - BACKLOG: side-on photos, flexed poses, body touching the frame edges, back photos as a feature.
-- System-design doc + free CloudWatch alarms, then M4 (which also makes the app usable on a phone).
+- System-design doc + free CloudWatch alarms, then M4 (which also makes the app usable on a phone). Design plan and apply in CI together with M4 (BACKLOG).
+- The checks workflow runs on every PR. Make its three jobs (frontend, python, terraform) required checks in protect-main.
 
 Done when: the waist height is chosen from fresh evidence, both thresholds come from the same session, and the API is deployed.
 
