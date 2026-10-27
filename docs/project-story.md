@@ -162,7 +162,7 @@ Each entry gives the problem, its root cause, the fix, and what I took away from
 
 **The Lambda limit was raised, which changed the cost picture.**
 - *Problem:* reserved concurrency had been impossible with a limit of 10 ([ADR-003](adr/003-lambda-concurrency-exception.md)).
-- *Cause:* the limit was raised to 400, so reservations became possible, but the account-wide cap of 10 that had been limiting spend disappeared with it.
+- *Cause:* the limit was raised to 400 (and later to the 1,000 originally requested), so reservations became possible, but the account-wide cap of 10 that had been limiting spend disappeared with it.
 - *Fix:* reserved 2 for the kill switch (so it can always run) and 2 for the API (now the real cap on how fast junk requests can spend).
 
 ### Local tooling
