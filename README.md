@@ -1,5 +1,7 @@
 # LiftLens
 
+[![checks](https://github.com/ashutosharma2/LiftLens/actions/workflows/checks.yml/badge.svg)](https://github.com/ashutosharma2/LiftLens/actions/workflows/checks.yml)
+
 **Gym-goers can't objectively track physique progress from photos.**
 
 Progress photos are compared by eye, and lighting, camera distance, posture and memory all get in the way. LiftLens turns a front-facing photo into a measurement you can track and check.
@@ -25,8 +27,8 @@ You're only ever compared with yourself. There's no "ideal body" and no comparis
 | M0 Guardrails | ✅ | Budget alerts, budget action, kill switch, deployed and tested |
 | M1 Measurement engine | ✅ | Browser measurement (TypeScript) matching the Python prototype; scoring module |
 | M2 Auth, API, data | ✅ | Cognito sign-up, DynamoDB, measurements API live and smoke-tested |
-| M3 Frontend | ✅ | Sign-in, guided capture, measuring on the device, save, history with trend |
-| M4 Deploy | ⏳ | Next: S3 + CloudFront |
+| M3 Frontend | ✅ | Sign-in, guided capture, measuring on the device, save, history with trend; noise band calibrated and photo checks added |
+| M4 Deploy | ⏳ | Next, after confirming the waist height on fresh photos: S3 + CloudFront |
 | M5 CI/CD | ⏳ | Tests and checks run on every pull request; plan and apply through OIDC come with M4 |
 | M6 Portfolio finish | | Screenshots, cost write-up |
 
@@ -96,53 +98,88 @@ The kill switch finds app resources by tag (`Project=LiftLens`, `Stack=app`), so
 
 | Path | Contents |
 |---|---|
-| `frontend/` | React + TypeScript + Vite app; `src/measure/` is the measurement engine |
+| `frontend/` | React + TypeScript + Vite app. `src/measure/` is the measurement engine and photo checks, `src/capture/` the camera and upload, `src/screens/` and `src/history/` the pages |
 | `backend/api/` | Measurements API Lambda: token check, validation, DynamoDB, scores ([contract](docs/api.md)) |
 | `backend/scoring/` | Explainable scoring (Python) |
 | `backend/kill_switch/` | Cost kill-switch Lambda |
 | `infra/guardrails/` | Terraform: budget, budget action, deploy role, kill switch (deployed) |
 | `infra/data/` | Terraform: measurement table and user pool, deletion-protected (deployed) |
-| `infra/app/` | Terraform: API Lambda and Function URL via `modules/api` (deployed) |
-| `dev/` | Python prototype and the script that exports reference numbers for tests |
-| `docs/` | ADRs, [API contract](docs/api.md) and [scoring](docs/scoring.md) |
+| `infra/app/` | Terraform: API Lambda and Function URL (deployed) |
+| `infra/modules/api/` | The API Lambda module used by `infra/app/` |
+| `dev/` | Python prototype, the reference-number export for the parity tests, and the calibration scripts (`noise.py`, `compare_waist_rows.py`) |
+| `docs/` | [Project story](docs/project-story.md), [ADRs](docs/adr/), [architecture diagrams](docs/architecture.md), [API contract](docs/api.md) and [scoring](docs/scoring.md). The other files there describe the original FastAPI design and are marked superseded |
+| `.github/` | The checks workflow and the pull request template |
 
 ## Running locally
 
-```sh
-# Measurement engine (TypeScript)
-cd frontend && npm install && npm test
+You need Node 26, Python 3.13 and Terraform 1.16, the same versions the checks use. All commands run from the repo root.
 
-# Scoring and kill switch (Python)
+**Tests**
+
+```sh
+# Frontend: tests, lint and production build
+(cd frontend && npm ci && npm test && npm run lint && npm run build)
+
+# Python: scoring, API and kill switch
 python3 -m venv backend/.venv && backend/.venv/bin/pip install pytest boto3 -r backend/api/requirements.txt
-cd backend/scoring && ../.venv/bin/python -m pytest
-cd ../api && ../.venv/bin/python -m pytest
-cd ../kill_switch && ../.venv/bin/python -m pytest
+for d in scoring api kill_switch; do (cd backend/$d && ../.venv/bin/python -m pytest); done
 ```
 
 The parity tests compare the TypeScript maths with the Python reference on real photos. Photos are never committed, so those tests skip unless you add your own to `dev/fixtures/` and run `dev/export_fixture.py` (see the script for setup).
 
+The same checks run on GitHub Actions for every pull request and every push to `main` ([checks.yml](.github/workflows/checks.yml)), and a pull request can't be merged until they pass. The workflow has no AWS access.
+
+**The app**
+
+The app signs in against the deployed user pool, and the dev server forwards `/api/*` to the deployed API. Once the data and app stacks exist (see Deploying), write the settings it needs into the gitignored `frontend/.env.local`, then start it:
+
+```sh
+AWS_PROFILE=liftlens-deploy frontend/scripts/write-env.sh
+(cd frontend && npm run dev)
+```
+
+`npm run dev` copies the MediaPipe model files into place first. Open the app in a desktop browser at the address it prints. A phone can't use it over your local network, because the camera and sign-in need a secure (HTTPS) page; that comes with hosting on CloudFront (M4).
+
 ## Deploying
 
-Infrastructure is deployed with Terraform from your machine using AWS IAM Identity Center (no access keys).
+Infrastructure is deployed with Terraform from your machine. You sign in through AWS IAM Identity Center, so there are no access keys. Every apply uses a saved plan that has been reviewed first, and nothing deploys from CI yet.
+
+Two AWS CLI profiles are used:
+
+- `liftlens`: your SSO sign-in.
+- `liftlens-deploy`: assumes the `liftlens-deploy` role that the guardrails stack creates. It's the role the budget action locks if spending passes $1.
+
+```ini
+# ~/.aws/config
+[profile liftlens-deploy]
+role_arn = arn:aws:iam::<account-id>:role/liftlens-deploy
+source_profile = liftlens
+region = ap-south-1
+```
+
+The guardrails stack is always applied with the SSO profile, so it stays fixable even while the deploy role is locked:
 
 ```sh
 aws sso login --profile liftlens
-cd infra/guardrails
-echo 'alert_email = "you@example.com"' > terraform.tfvars   # gitignored
-AWS_PROFILE=liftlens terraform init
-AWS_PROFILE=liftlens terraform plan -out=guardrails.tfplan   # review every resource
-AWS_PROFILE=liftlens terraform apply guardrails.tfplan
+echo 'alert_email = "you@example.com"' > infra/guardrails/terraform.tfvars   # gitignored
+AWS_PROFILE=liftlens terraform -chdir=infra/guardrails init
+AWS_PROFILE=liftlens terraform -chdir=infra/guardrails plan -out=guardrails.tfplan   # review every resource
+AWS_PROFILE=liftlens terraform -chdir=infra/guardrails apply guardrails.tfplan
 ```
 
-The guardrails stack is always applied with the SSO admin profile so it stays fixable while the deploy role is locked. The data and app stacks are applied with the `liftlens-deploy` role, data first:
+The data and app stacks are applied with the deploy role, data first, because the app stack looks up the table and user pool:
 
 ```sh
-backend/api/build.sh                                   # package the API for Lambda (Linux arm64)
+backend/api/build.sh   # package the API for Lambda (Linux arm64)
+AWS_PROFILE=liftlens-deploy terraform -chdir=infra/data init
 AWS_PROFILE=liftlens-deploy terraform -chdir=infra/data plan -out=data.tfplan
 AWS_PROFILE=liftlens-deploy terraform -chdir=infra/data apply data.tfplan
+AWS_PROFILE=liftlens-deploy terraform -chdir=infra/app init
 AWS_PROFILE=liftlens-deploy terraform -chdir=infra/app plan -out=app.tfplan
 AWS_PROFILE=liftlens-deploy terraform -chdir=infra/app apply app.tfplan
 ```
+
+If an apply fails with "No valid credential sources found", the SSO session has expired: run `aws sso login --profile liftlens` again. More fixes are in [infra/README.md](infra/README.md#troubleshooting).
 
 ## Cost
 
